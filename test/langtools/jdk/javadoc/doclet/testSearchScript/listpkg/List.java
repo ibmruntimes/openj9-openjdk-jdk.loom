@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,35 +21,39 @@
  * questions.
  */
 
-import java.io.Serializable;
-import java.lang.invoke.*;
-import java.util.concurrent.Callable;
+package listpkg;
+
 
 /**
- * @test
- * @summary StringConcatFactory exactness check produces bad bytecode when a non-arg concat is requested
- * @bug 8148787
- *
- * @compile StringConcatFactoryEmptyMethods.java
- *
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT  -Djava.lang.invoke.stringConcat.debug=true StringConcatFactoryEmptyMethods
- *
-*/
-public class StringConcatFactoryEmptyMethods {
+ * Example class containing "list" matching full name.
+ */
+public interface List<E> {
 
-    public static void main(String[] args) throws Throwable {
-        StringConcatFactory.makeConcat(
-            MethodHandles.lookup(),
-            "foo",
-            MethodType.methodType(String.class)
-        );
+    List add(E e);
 
-        StringConcatFactory.makeConcatWithConstants(
-            MethodHandles.lookup(),
-            "foo",
-            MethodType.methodType(String.class),
-            ""
-        );
+    void remove(int i);
+
+    int size();
+
+    static <E> List<E> of() {
+        return null;
     }
-
+    static <E> List<E> of(E e1) {
+        return null;
+    }
+    static <E> List<E> of(E e1, E e2) {
+        return null;
+    }
+    static <E> List<E> of(E e1, E e2, E e3) {
+        return null;
+    }
+    static <E> List<E> of(E e1, E e2, E e3, E e4) {
+        return null;
+    }
+    static <E> List<E> of(E e1, E e2, E e3, E e4, E e5) {
+        return null;
+    }
+    static <E> List<E> of(E... elements) {
+        return null;
+    }
 }
