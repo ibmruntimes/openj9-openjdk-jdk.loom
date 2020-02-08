@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Amazon and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,23 +19,21 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include <jni.h>
+package java.text;
 
-#ifdef WINDOWS
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
+/**
+ * Test validated that CalendarBuilder.toString does not throw an ArrayIndexOutOfBoundException.
+ */
 
-JNIEXPORT void JNICALL Java_jdk_jfr_event_sampling_TestNative_longTime
-  (JNIEnv *env, jclass jc)
-{
-#ifdef WINDOWS
-  Sleep(2*1000);
-#else
-  usleep(2*1000*1000);
-#endif
+import java.util.Calendar;
+
+public class CalendarBuilderTest {
+    public static void testCalendarBuilderToString() {
+        CalendarBuilder calendarBuilder = new CalendarBuilder();
+        calendarBuilder.set(Calendar.YEAR, 2020);
+        calendarBuilder.toString();
+
+    }
 }

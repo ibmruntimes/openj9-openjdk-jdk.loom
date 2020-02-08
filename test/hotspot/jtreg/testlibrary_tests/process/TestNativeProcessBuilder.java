@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,15 +21,24 @@
  * questions.
  */
 
-
 /*
  * @test
- *
- * @summary converted from VM Testbase metaspace/flags/maxMetaspaceSize.
- *
- * @library /vmTestbase /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
- * @build metaspace.flags.maxMetaspaceSize.maxMetaspaceSize
- * @run shell maxMetaspaceSize.sh
+ * @summary Test the native process builder API.
+ * @library /test/lib
+ * @build Test
+ * @run main/native TestNativeProcessBuilder
  */
 
+
+import jdk.test.lib.Utils;
+import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
+
+public class TestNativeProcessBuilder {
+    public static void main(String args[]) throws Exception {
+        ProcessBuilder pb = ProcessTools.createNativeTestProcessBuilder("jvm-test-launcher");
+        pb.environment().put("CLASSPATH", Utils.TEST_CLASS_PATH);
+        new OutputAnalyzer(pb.start())
+            .shouldHaveExitValue(0);
+    }
+}
