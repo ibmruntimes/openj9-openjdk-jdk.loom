@@ -21,24 +21,43 @@
  * questions.
  */
 
-/*
- * @test
- * @summary Test the native process builder API.
- * @library /test/lib
- * @build Test
- * @run main/native TestNativeProcessBuilder
+package javadoc.tester;
+
+import java.util.Locale;
+import java.util.Set;
+import javax.lang.model.SourceVersion;
+
+import jdk.javadoc.doclet.Doclet;
+import jdk.javadoc.doclet.DocletEnvironment;
+import jdk.javadoc.doclet.Reporter;
+
+/**
+ * A minimal base class for test doclets.
+ *
+ * The {@link Doclet#run(DocletEnvironment) run} method must still be provided by subtypes.
  */
+public abstract class TestDoclet implements Doclet {
+    protected Locale locale;
+    protected Reporter reporter;
 
+    @Override
+    public void init(Locale locale, Reporter reporter) {
+        this.locale = locale;
+        this.reporter = reporter;
+    }
 
-import jdk.test.lib.Utils;
-import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.process.OutputAnalyzer;
+    @Override
+    public String getName() {
+        return getClass().getSimpleName();
+    }
 
-public class TestNativeProcessBuilder {
-    public static void main(String args[]) throws Exception {
-        ProcessBuilder pb = ProcessTools.createNativeTestProcessBuilder("jvm-test-launcher");
-        pb.environment().put("CLASSPATH", Utils.TEST_CLASS_PATH);
-        new OutputAnalyzer(pb.start())
-            .shouldHaveExitValue(0);
+    @Override
+    public Set<? extends Option> getSupportedOptions() {
+        return Set.of();
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
     }
 }

@@ -42,8 +42,9 @@ JNIEnv* create_vm(JavaVM **jvm)
     args.ignoreUnrecognized = 0;
 
     int ret = JNI_CreateJavaVM(jvm, (void**)&env, &args);
-    if (ret < 0)
+    if (ret < 0) {
       exit(10);
+    }
 
     return env;
 }
@@ -53,13 +54,15 @@ void run(JNIEnv *env) {
   jclass test_class;
   jmethodID test_method;
 
-  test_class = (*env)->FindClass(env, "Test");
-  if (test_class == NULL)
+  test_class = (*env)->FindClass(env, "TestNativeProcessBuilder$Test");
+  if (test_class == NULL) {
     exit(11);
+  }
 
   test_method = (*env)->GetStaticMethodID(env, test_class, "test", "()V");
-  if (test_method == NULL)
+  if (test_method == NULL) {
     exit(12);
+  }
 
   (*env)->CallStaticVoidMethod(env, test_class, test_method);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,12 +21,15 @@
  * questions.
  */
 
-// key: compiler.err.dc.bad.gt
-// key: compiler.note.note
-// key: compiler.note.proc.messager
-// run: backdoor
-// options: -processor DocCommentProcessor -proc:only
+package sun.security.util;
 
-/** > */
-class BadGreaterThan { }
+import jdk.internal.util.StaticProperty;
 
+import java.io.File;
+
+// This is a patched version
+public class FilePaths {
+    public static String cacerts() {
+        return System.getProperty("test.cacerts", "mycacerts");
+    }
+}
