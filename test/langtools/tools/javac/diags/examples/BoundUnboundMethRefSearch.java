@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,8 +21,21 @@
  * questions.
  */
 
-package sun.java2d.marlin;
+// key: compiler.note.method.ref.search.results.multi
+// key: compiler.misc.bound
+// key: compiler.misc.applicable.method.found.2
+// key: compiler.misc.static
+// key: compiler.misc.non.static
+// key: compiler.misc.unbound
+// options: --debug=dumpMethodReferenceSearchResults
 
-public interface MarlinRenderer extends MarlinConst {
+import java.util.function.*;
 
+class BoundUnboundMethRefSearch {
+    public String foo(Object o) { return "foo"; }
+    public static String foo(String o) { return "bar"; }
+
+    void m() {
+        Function<String, String> f = BoundUnboundMethRefSearch::foo;
+    }
 }

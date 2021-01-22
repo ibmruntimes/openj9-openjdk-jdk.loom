@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,28 @@
  * questions.
  */
 
-package sun.java2d.marlin;
+package jdk.javadoc.internal.doclets.formats.html.markup;
 
-interface IRendererContext extends MarlinConst {
+/**
+ * A type-safe wrapper around a {@code String}, for use as an "id"
+ * in {@code HtmlTree} objects.
+ *
+ * @see HtmlTree#setId(HtmlId)
+ */
+public interface HtmlId {
+    /**
+     * Creates an id with the given name.
+     *
+     * @param name the name
+     * @return the id
+     */
+    static HtmlId of(String name) {
+        assert name.indexOf(' ') == -1;
+        return () -> name;
+    }
 
-    public RendererStats stats();
-
-    public OffHeapArray newOffHeapArray(final long initialSize);
-
-    public IntArrayCache.Reference newCleanIntArrayRef(final int initialSize);
-
+    /**
+     * {@return the name of the id}
+     */
+    String name();
 }
