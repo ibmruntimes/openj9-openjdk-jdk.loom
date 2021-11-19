@@ -22,11 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2019, 2019 All Rights Reserved
+ * ===========================================================================
+ */
 
 package sun.security.rsa;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import java.security.*;
 import java.security.spec.*;
@@ -38,6 +44,7 @@ import sun.security.util.*;
 import sun.security.pkcs.PKCS8Key;
 
 import sun.security.rsa.RSAUtil.KeyType;
+import jdk.crypto.jniprovider.NativeCrypto;
 
 /**
  * RSA private key implementation for "RSA", "RSASSA-PSS" algorithms in CRT form.
@@ -58,6 +65,8 @@ public final class RSAPrivateCrtKeyImpl
     @java.io.Serial
     private static final long serialVersionUID = -1326088454257084918L;
 
+    private final ConcurrentLinkedQueue<Long> keyQ = new ConcurrentLinkedQueue<>();
+
     private BigInteger n;       // modulus
     private BigInteger e;       // public exponent
     private BigInteger d;       // private exponent
@@ -73,6 +82,12 @@ public final class RSAPrivateCrtKeyImpl
     // specified in the encoding of its AlgorithmId.
     // Must be null for "RSA" keys.
     private transient AlgorithmParameterSpec keyParams;
+
+    private static NativeCrypto nativeCrypto;
+
+    static {
+        nativeCrypto = NativeCrypto.getNativeCrypto();
+    }
 
     /**
      * Generate a new RSAPrivate(Crt)Key from the specified type,
@@ -296,6 +311,53 @@ public final class RSAPrivateCrtKeyImpl
     @Override
     public BigInteger getCrtCoefficient() {
         return coeff;
+    }
+
+    private long RSAPrivateKey_generate() {
+
+        BigInteger n =    this.getModulus();
+        BigInteger d =    this.getPrivateExponent();
+        BigInteger e =    this.getPublicExponent();
+        BigInteger p =    this.getPrimeP();
+        BigInteger q =    this.getPrimeQ();
+        BigInteger dP =   this.getPrimeExponentP();
+        BigInteger dQ =   this.getPrimeExponentQ();
+        BigInteger qInv = this.getCrtCoefficient();
+
+        byte[] n_2c = n.toByteArray();
+        byte[] d_2c = d.toByteArray();
+        byte[] e_2c = e.toByteArray();
+
+        byte[] p_2c = p.toByteArray();
+        byte[] q_2c = q.toByteArray();
+
+        byte[] dP_2c   = dP.toByteArray();
+        byte[] dQ_2c   = dQ.toByteArray();
+        byte[] qInv_2c = qInv.toByteArray();
+
+        return nativeCrypto.createRSAPrivateCrtKey(n_2c, n_2c.length, d_2c, d_2c.length, e_2c, e_2c.length,
+                p_2c, p_2c.length, q_2c, q_2c.length,
+                dP_2c, dP_2c.length, dQ_2c, dQ_2c.length, qInv_2c, qInv_2c.length);
+    }
+
+    protected long getNativePtr() {
+        Long ptr = keyQ.poll();
+        if (ptr == null) {
+            return RSAPrivateKey_generate();
+        }
+        return ptr;
+    }
+
+    protected void returnNativePtr(long ptr) {
+        keyQ.add(ptr);
+    }
+
+    @Override
+    public void finalize() {
+        Long itr;
+        while ((itr = keyQ.poll()) != null) {
+            nativeCrypto.destroyRSAKey(itr);
+        }
     }
 
     // see JCA doc

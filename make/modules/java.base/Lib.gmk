@@ -23,6 +23,10 @@
 # questions.
 #
 
+# ===========================================================================
+# (c) Copyright IBM Corp. 2018, 2018 All Rights Reserved
+# ===========================================================================
+
 include LibCommon.gmk
 
 # Hook to include the corresponding custom file, if present.
@@ -123,6 +127,8 @@ endif
 ################################################################################
 # Create the jsig library
 
+# use libjsig from OpenJ9
+ifeq ($(OPENJ9_TOPDIR),)
 ifeq ($(call isTargetOsType, unix), true)
   ifeq ($(STATIC_BUILD), false)
     LIBJSIG_CFLAGS += -DHOTSPOT_VM_DISTRO='"$(HOTSPOT_VM_DISTRO)"'
@@ -163,6 +169,7 @@ ifeq ($(call isTargetOsType, unix), true)
 
   endif
 endif
+endif # use libjsig from OpenJ9
 
 ################################################################################
 # Create the symbols file for static builds.

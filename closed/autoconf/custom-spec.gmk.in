@@ -1,0 +1,172 @@
+# ===========================================================================
+# (c) Copyright IBM Corp. 2017, 2021 All Rights Reserved
+# ===========================================================================
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# IBM designates this particular file as subject to the "Classpath" exception
+# as provided by IBM in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, see <http://www.gnu.org/licenses/>.
+# ===========================================================================
+
+# This macro is called to allow inclusion of closed source counterparts.
+# If running without closed sources, it expands to nothing.
+# Usage: This function is called in an open makefile, with the following
+# arguments:
+# $1 the name of the makefile
+define IncludeCustomExtension
+  ifndef OPENJDK
+    custom_include_file := $(TOPDIR)/closed/custom/$(strip $1)
+    ifneq ($$(wildcard $$(custom_include_file)), )
+      include $$(custom_include_file)
+    endif
+  endif
+endef
+
+OPENJ9_TOPDIR           := @OPENJ9_TOPDIR@
+OPENJ9OMR_TOPDIR        := @OPENJ9OMR_TOPDIR@
+
+# compiler overrides
+OPENJ9_CC               := @OPENJ9_CC@
+OPENJ9_CXX              := @OPENJ9_CXX@
+OPENJ9_DEVELOPER_DIR    := @OPENJ9_DEVELOPER_DIR@
+NASM                    := @NASM@
+
+# treatment of warnings in native code
+WARNINGS_AS_ERRORS_OMR    := @WARNINGS_AS_ERRORS_OMR@
+WARNINGS_AS_ERRORS_OPENJ9 := @WARNINGS_AS_ERRORS_OPENJ9@
+
+# treatment of warnings in Java code, see JavaCompilation.gmk
+# only ignore warnings in these modules
+WARNING_MODULES := \
+	java.base \
+	jdk.management \
+	openj9.dtfj \
+	openj9.dtfjview \
+	openj9.sharedclasses \
+	openj9.traceformat \
+	#
+
+ifneq (,$(filter $(WARNING_MODULES),$(MODULE)))
+  JAVA_WARNINGS_ARE_ERRORS :=
+endif
+
+# CUDA
+OPENJ9_ENABLE_CUDA      := @OPENJ9_ENABLE_CUDA@
+ifneq (,@OPENJ9_CUDA_HOME@)
+export CUDA_HOME        := @OPENJ9_CUDA_HOME@
+endif
+ifneq (,@OPENJ9_GDK_HOME@)
+export GDK_HOME         := @OPENJ9_GDK_HOME@
+endif
+
+# DDR
+OPENJ9_ENABLE_DDR       := @OPENJ9_ENABLE_DDR@
+
+OPENJ9_ENABLE_DEMOS     := @OPENJ9_ENABLE_DEMOS@
+
+# JITSERVER
+OPENJ9_ENABLE_JITSERVER := @OPENJ9_ENABLE_JITSERVER@
+
+# Inline-Types
+OPENJ9_ENABLE_INLINE_TYPES := @OPENJ9_ENABLE_INLINE_TYPES@
+
+# CRIU Support
+OPENJ9_ENABLE_CRIU_SUPPORT := @OPENJ9_ENABLE_CRIU_SUPPORT@
+
+# for constructing version output
+COMPILER_VERSION_STRING := @COMPILER_VERSION_STRING@
+
+include $(TOPDIR)/closed/openjdk-tag.gmk
+
+J9JDK_EXT_VERSION       := $(VERSION_NUMBER_FOUR_POSITIONS)-ea
+J9JDK_EXT_NAME          := Extensions for OpenJDK for Eclipse OpenJ9
+
+# required by CMake
+CMAKE                   := @CMAKE@
+OPENJ9_ENABLE_CMAKE     := @OPENJ9_ENABLE_CMAKE@
+
+# required by UMA
+FREEMARKER_JAR          := @FREEMARKER_JAR@
+OPENJ9_BUILDSPEC        := @OPENJ9_BUILDSPEC@
+
+# required by JPP
+OPENJ9_PLATFORM_CODE    := @OPENJ9_PLATFORM_CODE@
+
+OPENJ9_LIBS_SUBDIR      := @OPENJ9_LIBS_SUBDIR@
+
+# Mixed References Mode
+OMR_MIXED_REFERENCES_MODE := @OMR_MIXED_REFERENCES_MODE@
+
+# Export autoconf cache variables for CC/CXX.
+# This is for the case where ccache is enabled.
+# It ensures that OMR autoconf uses the compiler, not ccache.
+export ac_cv_prog_CC    := @CC@
+export ac_cv_prog_CXX   := @CXX@
+
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  # Set environment variables for Microsoft Visual Studio toolchain.
+  # Note that PATH is set in spec.gmk.
+  export INCLUDE := @OPENJ9_VS_INCLUDE@
+  export LIB := @OPENJ9_VS_LIB@
+  export MSVC_VERSION := @TOOLCHAIN_VERSION@
+endif
+
+ifeq ($(OPENJDK_TARGET_OS), macosx)
+  # MACOSX_DEPLOYMENT_TARGET acts similar to -mmacosx-version-min=version
+  # compiler option. If both the compiler option is specified and the
+  # environment variable is set, then the compiler option will take
+  # precedence. Here, MACOSX_DEPLOYMENT_TARGET environment variable and
+  # the compiler option will point to the same version. The environment
+  # variable is defined to support dependencies where the compiler option
+  # is not applied.
+  export MACOSX_DEPLOYMENT_TARGET := @MACOSX_VERSION_MIN@
+
+  ifneq ($(OPENJDK_TARGET_CPU), aarch64)
+    # Set page zero size to 4KB for mapping memory below 4GB.
+    LDFLAGS_JDKEXE += -pagezero_size 0x1000
+  endif
+endif
+
+# Usage: $(call CodesignFile, files ...)
+ifeq (,$(CODESIGN))
+  CodesignFile =
+else
+  CodesignFile = $(CODESIGN) --sign "$(MACOSX_CODESIGN_IDENTITY)" \
+	--entitlements $(TOPDIR)/make/data/macosxsigning/default.plist \
+	--options runtime \
+	--timestamp \
+	$1
+endif
+
+# Archive from which to import Health Center content.
+HEALTHCENTER_JAR := @HEALTHCENTER_JAR@
+
+# OpenSSL
+BUILD_OPENSSL           := @BUILD_OPENSSL@
+OPENSSL_BUNDLE_LIB_PATH := @OPENSSL_BUNDLE_LIB_PATH@
+OPENSSL_CFLAGS          := @OPENSSL_CFLAGS@
+OPENSSL_DIR             := @OPENSSL_DIR@
+WITH_OPENSSL            := @WITH_OPENSSL@
+
+# Use '=' instead of ':=' because bootcycle-spec.gmk overrides OUTPUTDIR.
+ifeq (true,$(OPENJ9_ENABLE_CMAKE))
+  OPENJ9_VM_BUILD_DIR = $(OUTPUTDIR)/vm/runtime
+else
+  OPENJ9_VM_BUILD_DIR = $(OUTPUTDIR)/vm
+endif
+
+J9JCL_SOURCES_DIR      := $(SUPPORT_OUTPUTDIR)/j9jcl
+J9JCL_SOURCES_DONEFILE := $(MAKESUPPORT_OUTPUTDIR)/j9jcl.done
+
+# Disable all hotspot features.
+JVM_FEATURES_server :=

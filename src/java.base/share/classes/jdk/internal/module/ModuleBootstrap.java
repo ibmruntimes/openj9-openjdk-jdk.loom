@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2018, 2019 All Rights Reserved
+ * ===========================================================================
+ */
 
 package jdk.internal.module;
 
@@ -56,6 +61,7 @@ import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.CDS;
 import jdk.internal.perf.PerfCounter;
+import jdk.internal.loader.ClassLoaders;						//OpenJ9-shared_classes_misc
 
 /**
  * Initializes/boots the module system.
@@ -469,6 +475,11 @@ public final class ModuleBootstrap {
             if (savedModuleFinder != finder)
                 limitedFinder = new SafeModuleFinder(finder);
         }
+
+        ClassLoader appLoader = ClassLoaders.appClassLoader();                                                  //OpenJ9-shared_classes_misc
+        ClassLoader platformLoader = ClassLoaders.platformClassLoader();                                //OpenJ9-shared_classes_misc
+        ((BuiltinClassLoader)platformLoader).initializeSharedClassesSupport();                  //OpenJ9-shared_classes_misc
+        ((BuiltinClassLoader)appLoader).initializeSharedClassesSupport();                               //OpenJ9-shared_classes_misc
 
         // Archive module graph and boot layer can be archived at CDS dump time.
         // Only allow the unnamed module case for now.

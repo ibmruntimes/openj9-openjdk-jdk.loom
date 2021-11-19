@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2018, 2021 All Rights Reserved
+ * ===========================================================================
+ */
 
 package com.sun.crypto.provider;
 
@@ -33,6 +38,8 @@ import java.security.spec.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
 import javax.crypto.BadPaddingException;
+
+import jdk.crypto.jniprovider.NativeCrypto;
 
 /**
  * This class represents the symmetric algorithms in its various modes
@@ -53,6 +60,21 @@ import javax.crypto.BadPaddingException;
  */
 
 final class CipherCore {
+
+    /*
+     * Check whether native crypto is disabled with property.
+     *
+     * By default, the native crypto is enabled and uses the native
+     * crypto library implementation.
+     *
+     * The property 'jdk.nativeCBC' is used to disable Native CBC alone,
+     * 'jdk.nativeGCM' is used to disable Native GCM alone and
+     * 'jdk.nativeCrypto' is used to disable all native cryptos (Digest,
+     * CBC, GCM, RSA and ChaCha20).
+     */
+    private static boolean useNativeCrypto = true;
+    private static boolean useNativeCBC = true;
+    private static boolean useNativeGCM = true;
 
     /*
      * internal buffer
@@ -166,7 +188,17 @@ final class CipherCore {
         SymmetricCipher rawImpl = cipher.getEmbeddedCipher();
         if (modeUpperCase.equals("CBC")) {
             cipherMode = CBC_MODE;
-            cipher = new CipherBlockChaining(rawImpl);
+
+            /*
+             * Check whether native CBC is enabled and instantiate
+             * the NativeCipherBlockChaining class.
+             */
+            if (useNativeCBC && blockSize == 16) {
+                cipher = new NativeCipherBlockChaining(rawImpl);
+            } else {
+                cipher = new CipherBlockChaining(rawImpl);
+            }
+
         } else if (modeUpperCase.equals("CTS")) {
             cipherMode = CTS_MODE;
             cipher = new CipherTextStealing(rawImpl);
@@ -1070,6 +1102,56 @@ final class CipherCore {
                     wrappedKeyType);
         } finally {
             Arrays.fill(encodedKey, (byte)0);
+        }
+    }
+    private static String privilegedGetProperty(final String property) {
+        return AccessController.doPrivileged(new PrivilegedAction<String>() {
+            public String run() {
+                return System.getProperty(property);
+            }
+        });
+    }
+
+    static {
+        String nativeCryptTrace = privilegedGetProperty("jdk.nativeCryptoTrace");
+        String nativeCryptStr   = privilegedGetProperty("jdk.nativeCrypto");
+        String nativeCBCStr     = privilegedGetProperty("jdk.nativeCBC");
+        String nativeGCMStr     = privilegedGetProperty("jdk.nativeGCM");
+
+        useNativeCrypto = (nativeCryptStr == null) || Boolean.parseBoolean(nativeCryptStr);
+
+        if (!useNativeCrypto) {
+            useNativeCBC = false;
+            useNativeGCM = false;
+        } else {
+            useNativeCBC = (nativeCBCStr == null) || Boolean.parseBoolean(nativeCBCStr);
+            useNativeGCM = (nativeGCMStr == null) || Boolean.parseBoolean(nativeGCMStr);
+        }
+
+        if (useNativeCBC || useNativeGCM) {
+            /*
+             * User want to use native crypto implementation.
+             * Make sure the native crypto libraries are loaded successfully.
+             * Otherwise, throw a warning message and fall back to the in-built
+             * java crypto implementation.
+             */
+            if (!NativeCrypto.isLoaded()) {
+                useNativeCBC = false;
+                useNativeGCM = false;
+
+                if (nativeCryptTrace != null) {
+                    System.err.println("Warning: Native crypto library load failed." +
+                            " Using Java crypto implementation");
+                }
+            } else {
+                if (nativeCryptTrace != null) {
+                    System.err.println("CipherCore Load - using native crypto library.");
+                }
+            }
+        } else {
+            if (nativeCryptTrace != null) {
+                System.err.println("CipherCore Load - native crypto library disabled.");
+            }
         }
     }
 }
