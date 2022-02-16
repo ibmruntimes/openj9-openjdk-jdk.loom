@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ * =======================================================================
+ * (c) Copyright IBM Corp. 2018, 2020 All Rights Reserved
+ * =======================================================================
+ */
+
 package java.io;
 
 import java.io.ObjectInputFilter.Config;
@@ -371,6 +377,37 @@ public class ObjectInputStream
     private boolean streamFilterSet;
 
     /**
+     * cache LUDCL (Latest User Defined Class Loader) till completion of
+     * read* requests
+     */
+
+    /* ClassCache Entry for caching class.forName results upon enableClassCaching */
+    private static final ClassCache classCache;
+    private static final boolean isClassCachingEnabled;
+    static {
+        isClassCachingEnabled =
+            AccessController.doPrivileged(new GetClassCachingSettingAction());
+        classCache = (isClassCachingEnabled ? new ClassCache() : null);
+    }
+  
+
+    /** if true LUDCL/forName results would be cached, true by default starting Java8 */
+    private static final class GetClassCachingSettingAction
+    implements PrivilegedAction<Boolean> {
+        public Boolean run() {
+            String property =
+                System.getProperty("com.ibm.enableClassCaching", "true");
+            return property.equalsIgnoreCase("true");
+        }
+    }
+    private ClassLoader cachedLudcl;
+    /* If user code is invoked in the middle of a call to readObject the cachedLudcl
+     * must be refreshed as the ludcl could have been changed while in user code.
+     */
+    private boolean refreshLudcl = false;
+    private Object startingLudclObject = null;
+
+    /**
      * Creates an ObjectInputStream that reads from the specified InputStream.
      * A serialization stream header is read from the stream and verified.
      * This constructor will block until the corresponding ObjectOutputStream
@@ -493,7 +530,27 @@ public class ObjectInputStream
      */
     public final Object readObject()
         throws IOException, ClassNotFoundException {
-        return readObject(Object.class);
+        return readObject(Object.class, null);
+    }
+
+    /**
+     * Refer PR102778/PR110962/PR111232:
+     * Whenever jit compiler encounters processing readObject() method
+     * it will replace the call with redirectedReadObject() method to improve
+     * the performance for custom serialisation. JIT provide the class loader through
+     * the caller parameter to avoid the stack walk through while calling
+     * latestUserDefinedLoader().
+     *
+     * @throws  ClassNotFoundException if the class of a serialized object
+     * 	   could not be found.
+     * @throws  IOException if an I/O error occurs.
+     *
+     */
+
+    private static Object redirectedReadObject(ObjectInputStream iStream, Class caller)
+            throws ClassNotFoundException, IOException
+    {
+        return iStream.readObject(Object.class, caller);
     }
 
     /**
@@ -505,7 +562,7 @@ public class ObjectInputStream
      */
     private String readString() throws IOException {
         try {
-            return (String) readObject(String.class);
+            return (String) readObject(String.class, null);
         } catch (ClassNotFoundException cnf) {
             throw new IllegalStateException(cnf);
         }
@@ -516,13 +573,19 @@ public class ObjectInputStream
      * Called only from {@code readObject()} and {@code readString()}.
      * Only {@code Object.class} and {@code String.class} are supported.
      *
+     * Actual implementation of readObject method which fetches classloader using
+     * latestUserDefinedLoader() method if caller is null. If caller is not null which means
+     * jit passes the class loader info and hence avoids calling latestUserDefinedLoader()
+     * method call to improve the performance for custom serialisation.
+     *
      * @param type the type expected; either Object.class or String.class
+     * @param caller the caller class
      * @return an object of the type
      * @throws  IOException Any of the usual Input/Output related exceptions.
      * @throws  ClassNotFoundException Class of a serialized object cannot be
      *          found.
      */
-    private final Object readObject(Class<?> type)
+    private final Object readObject(Class<?> type, Class caller)
         throws IOException, ClassNotFoundException
     {
         if (enableOverride) {
@@ -531,6 +594,28 @@ public class ObjectInputStream
 
         if (! (type == Object.class || type == String.class))
             throw new AssertionError("internal error");
+
+        ClassLoader oldCachedLudcl = null;
+	    boolean setCached = false;
+	
+	    if (((null == curContext) || refreshLudcl) && (isClassCachingEnabled)) {
+            oldCachedLudcl = cachedLudcl;
+
+            // If caller is not provided, follow the standard path to get the cachedLudcl.
+            // Otherwise use the class loader provided by JIT as the cachedLudcl.
+
+            if (caller == null) {
+                 cachedLudcl = latestUserDefinedLoader();
+            }else{
+                 cachedLudcl = caller.getClassLoader();
+            }
+
+            setCached = true;
+            refreshLudcl = false;
+            if (null == startingLudclObject) {
+                startingLudclObject = this;
+            }
+        }
 
         // if nested read, passHandle contains handle of enclosing object
         int outerHandle = passHandle;
@@ -547,7 +632,15 @@ public class ObjectInputStream
             }
             return obj;
         } finally {
+            /* Back to the start, refresh ludcl cache on next call. */
+            if (this == startingLudclObject) {
+                refreshLudcl = true;
+                startingLudclObject = null;
+            }
             passHandle = outerHandle;
+            if (setCached) {
+                cachedLudcl = oldCachedLudcl;
+            }
             if (closed && depth == 0) {
                 clear();
             }
@@ -627,6 +720,20 @@ public class ObjectInputStream
      * @since   1.4
      */
     public Object readUnshared() throws IOException, ClassNotFoundException {
+
+        ClassLoader oldCachedLudcl = null;
+        boolean setCached = false; 
+
+        if (((null == curContext) || refreshLudcl) && (isClassCachingEnabled)) {
+            oldCachedLudcl = cachedLudcl;
+            cachedLudcl = latestUserDefinedLoader();
+            setCached = true;
+            refreshLudcl = false;
+            if (null == startingLudclObject) {
+                startingLudclObject = this;
+            }
+        }
+
         // if nested read, passHandle contains handle of enclosing object
         int outerHandle = passHandle;
         try {
@@ -642,7 +749,15 @@ public class ObjectInputStream
             }
             return obj;
         } finally {
+            /* Back to the start, refresh ludcl cache on next call. */
+            if (this == startingLudclObject) {
+                refreshLudcl = true;
+                startingLudclObject = null;
+            }
             passHandle = outerHandle;
+            if (setCached) {
+                cachedLudcl = oldCachedLudcl;
+            }
             if (closed && depth == 0) {
                 clear();
             }
@@ -799,7 +914,15 @@ public class ObjectInputStream
     {
         String name = desc.getName();
         try {
-            return Class.forName(name, false, latestUserDefinedLoader());
+            if (null == classCache) {
+                return Class.forName(name, false, latestUserDefinedLoader());
+            } else {
+                if (refreshLudcl) {
+                    cachedLudcl = latestUserDefinedLoader();
+                    refreshLudcl = false;
+                }
+                return classCache.get(name, cachedLudcl);
+            }
         } catch (ClassNotFoundException ex) {
             Class<?> cl = primClasses.get(name);
             if (cl != null) {
@@ -2291,6 +2414,8 @@ public class ObjectInputStream
             handles.lookupException(passHandle) == null &&
             desc.hasReadResolveMethod())
         {
+            /* user code is invoked */
+            refreshLudcl = true;
             Object rep = desc.invokeReadResolve(obj);
             if (unshared && rep.getClass().isArray()) {
                 rep = cloneArray(rep);
@@ -2448,6 +2573,9 @@ public class ObjectInputStream
                         curContext = new SerialCallbackContext(obj, slotDesc);
 
                         bin.setBlockDataMode(true);
+
+                        /* user code is invoked */
+                        refreshLudcl = true;
                         slotDesc.invokeReadObject(obj, this);
                     } catch (ClassNotFoundException ex) {
                         /*
@@ -2501,6 +2629,8 @@ public class ObjectInputStream
                     slotDesc.hasReadObjectNoDataMethod() &&
                     handles.lookupException(passHandle) == null)
                 {
+                    /* user code is invoked */
+                    refreshLudcl = true;
                     slotDesc.invokeReadObjectNoData(obj);
                 }
             }

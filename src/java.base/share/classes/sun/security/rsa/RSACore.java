@@ -22,10 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2018, 2019 All Rights Reserved
+ * ===========================================================================
+ */
 
 package sun.security.rsa;
 
 import sun.security.jca.JCAUtil;
+
+import sun.security.action.GetPropertyAction;
+import jdk.crypto.jniprovider.NativeCrypto;
 
 import javax.crypto.BadPaddingException;
 import java.math.BigInteger;
@@ -54,6 +62,18 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author  Andreas Sterbenz
  */
 public final class RSACore {
+
+    /*
+     * Check whether native crypto is enabled with property.
+     *
+     * By default, the native crypto is enabled and uses the native
+     * crypto library implementation.
+     *
+     * The property 'jdk.nativeRSA' is used to enable Native RSA alone,
+     * and 'jdk.nativeCrypto' is used to enable all native cryptos (Digest,
+     * CBC, GCM, and RSA).
+     */
+    private static boolean useNativeRsa = true;
 
     // globally enable/disable use of blinding
     private static final boolean ENABLE_BLINDING = true;
@@ -105,6 +125,13 @@ public final class RSACore {
      */
     public static byte[] rsa(byte[] msg, RSAPublicKey key)
             throws BadPaddingException {
+        if (useNativeRsa && key instanceof sun.security.rsa.RSAPublicKeyImpl) {
+            byte[] ret = NativeRSACore.rsa(msg, (sun.security.rsa.RSAPublicKeyImpl) key);
+            if (ret != null) {
+                return ret;
+            }
+            useNativeRsa = false;
+        }
         return crypt(msg, key.getModulus(), key.getPublicExponent());
     }
 
@@ -127,6 +154,13 @@ public final class RSACore {
     public static byte[] rsa(byte[] msg, RSAPrivateKey key, boolean verify)
             throws BadPaddingException {
         if (key instanceof RSAPrivateCrtKey) {
+            if (useNativeRsa && key instanceof sun.security.rsa.RSAPrivateCrtKeyImpl) {
+                byte[] ret = NativeRSACore.rsa(msg, (sun.security.rsa.RSAPrivateCrtKeyImpl) key, verify);
+                if (ret != null) {
+                    return ret;
+                }
+                useNativeRsa = false;
+            }
             return crtCrypt(msg, (RSAPrivateCrtKey)key, verify);
         } else {
             return priCrypt(msg, key.getModulus(), key.getPrivateExponent());
@@ -248,6 +282,48 @@ public final class RSACore {
         System.arraycopy(b, 0, t, (len - n), n);
         Arrays.fill(b, (byte)0);
         return t;
+    }
+
+    static {
+        String nativeCryptTrace = GetPropertyAction.privilegedGetProperty("jdk.nativeCryptoTrace");
+        String nativeCryptStr = GetPropertyAction.privilegedGetProperty("jdk.nativeCrypto");
+
+        if ((nativeCryptStr != null) && !Boolean.parseBoolean(nativeCryptStr)) {
+            /* nativeCrypto is disabled */
+            useNativeRsa = false;
+        } else {
+            String nativeRsaStr = GetPropertyAction.privilegedGetProperty("jdk.nativeRSA");
+
+            if ((nativeRsaStr != null) && !Boolean.parseBoolean(nativeRsaStr)) {
+                /* nativeRSA is disabled */
+                useNativeRsa = false;
+            }
+        }
+
+        if (useNativeRsa) {
+            /*
+             * User wants to use native crypto implementation.
+             * Make sure the native crypto libraries are loaded successfully.
+             * Otherwise, throw a warning message and fall back to the in-built
+             * java crypto implementation.
+             */
+            if (!NativeCrypto.isLoaded()) {
+                useNativeRsa = false;
+
+                if (nativeCryptTrace != null) {
+                    System.err.println("Warning: Native crypto library load failed." +
+                            " Using Java crypto implementation");
+                }
+            } else {
+                if (nativeCryptTrace != null) {
+                    System.err.println("RSACore load - using Native crypto library.");
+                }
+            }
+        } else {
+            if (nativeCryptTrace != null) {
+                System.err.println("RSACore load - Native crypto library disabled.");
+            }
+        }
     }
 
     /**
@@ -393,13 +469,13 @@ public final class RSACore {
             }
 
             if (e != null) {
-                u = u.modPow(e, n);   // e: the public exponent
-                                      // u: random ^ e
-                                      // v: random ^ (-1)
+                u = u.modPow(e, n); // e: the public exponent
+                                    // u: random ^ e
+                                    // v: random ^ (-1)
             } else {
-                v = v.modPow(d, n);   // d: the private exponent
-                                      // u: random
-                                      // v: random ^ (-d)
+                v = v.modPow(d, n); // d: the private exponent
+                                    // u: random
+                                    // v: random ^ (-d)
             }
         }
 

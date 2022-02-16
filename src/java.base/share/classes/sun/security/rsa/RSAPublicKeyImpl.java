@@ -22,11 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2019, 2019 All Rights Reserved
+ * ===========================================================================
+ */
 
 package sun.security.rsa;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import java.security.*;
 import java.security.spec.*;
@@ -36,6 +42,7 @@ import sun.security.util.*;
 import sun.security.x509.X509Key;
 
 import sun.security.rsa.RSAUtil.KeyType;
+import jdk.crypto.jniprovider.NativeCrypto;
 
 /**
  * RSA public key implementation for "RSA", "RSASSA-PSS" algorithms.
@@ -55,6 +62,8 @@ public final class RSAPublicKeyImpl extends X509Key implements RSAPublicKey {
     private static final long serialVersionUID = 2644735423591199609L;
     private static final BigInteger THREE = BigInteger.valueOf(3);
 
+    private final ConcurrentLinkedQueue<Long> keyQ = new ConcurrentLinkedQueue<>();
+
     private BigInteger n;       // modulus
     private BigInteger e;       // public exponent
 
@@ -64,6 +73,12 @@ public final class RSAPublicKeyImpl extends X509Key implements RSAPublicKey {
     // specified in the encoding of its AlgorithmId
     // must be null for "RSA" keys.
     private transient AlgorithmParameterSpec keyParams;
+
+    private static NativeCrypto nativeCrypto;
+
+    static {
+        nativeCrypto = nativeCrypto.getNativeCrypto();
+    }
 
     /**
      * Generate a new RSAPublicKey from the specified type, format, and
@@ -243,5 +258,35 @@ public final class RSAPublicKeyImpl extends X509Key implements RSAPublicKey {
                         getAlgorithm(),
                         getFormat(),
                         getEncoded());
+    }
+
+    private long RSAPublicKey_generate() {
+        BigInteger n = this.getModulus();
+        BigInteger e = this.getPublicExponent();
+
+        byte[] n_2c = n.toByteArray();
+        byte[] e_2c = e.toByteArray();
+
+        return nativeCrypto.createRSAPublicKey(n_2c, n_2c.length, e_2c, e_2c.length);
+    }
+
+    protected long getNativePtr() {
+        Long ptr = keyQ.poll();
+        if (ptr == null) {
+            return RSAPublicKey_generate();
+        }
+        return ptr;
+    }
+
+    protected void returnNativePtr(long ptr) {
+        keyQ.add(ptr);
+    }
+
+    @Override
+    public void finalize() {
+        Long itr;
+        while ((itr = keyQ.poll()) != null) {
+            nativeCrypto.destroyRSAKey(itr);
+        }
     }
 }

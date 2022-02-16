@@ -54,9 +54,6 @@ import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-import jdk.internal.access.JavaNetInetAddressAccess;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.misc.Blocker;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.Stable;
 import sun.net.ResolverProviderConfiguration;
@@ -968,7 +965,6 @@ public class InetAddress implements java.io.Serializable {
     // in cache when the result is obtained
     private static final class NameServiceAddresses implements Addresses {
         private final String host;
-        private final ReentrantLock lookupLock = new ReentrantLock();
 
         NameServiceAddresses(String host) {
             this.host = host;
@@ -1063,11 +1059,7 @@ public class InetAddress implements java.io.Serializable {
             if (addr.length != Inet4Address.INADDRSZ && addr.length != Inet6Address.INADDRSZ) {
                 throw new IllegalArgumentException("Invalid address length");
             }
-            if (Thread.currentThread().isVirtual()) {
-                return Blocker.managedBlock(() -> impl.getHostByAddr(addr));
-            } else {
-                return impl.getHostByAddr(addr);
-            }
+            return impl.getHostByAddr(addr);
         }
     }
 
