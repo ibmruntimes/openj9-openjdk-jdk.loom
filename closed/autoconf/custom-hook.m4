@@ -1,5 +1,5 @@
 # ===========================================================================
-# (c) Copyright IBM Corp. 2017, 2021 All Rights Reserved
+# (c) Copyright IBM Corp. 2017, 2022 All Rights Reserved
 # ===========================================================================
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
@@ -49,6 +49,7 @@ AC_DEFUN_ONCE([CUSTOM_EARLY_HOOK],
   OPENJ9_CONFIGURE_WARNINGS
   OPENJ9_CONFIGURE_JITSERVER
   OPENJ9_CONFIGURE_INLINE_TYPES
+  OPENJ9_CONFIGURE_OPENJDK_THREAD_SUPPORT
   OPENJ9_THIRD_PARTY_REQUIREMENTS
   OPENJ9_CHECK_NASM_VERSION
 ])
@@ -403,6 +404,25 @@ AC_DEFUN([OPENJ9_CONFIGURE_JITSERVER],
   AC_SUBST(OPENJ9_ENABLE_JITSERVER)
 ])
 
+AC_DEFUN([OPENJ9_CONFIGURE_OPENJDK_THREAD_SUPPORT],
+[
+  AC_MSG_CHECKING([for OpenJDK Thread support])
+  AC_ARG_ENABLE([openjdk-thread-support], [AS_HELP_STRING([--enable-openjdk-thread-support], [enable OpenJDK Thread support @<:@disabled@:>@])])
+  OPENJ9_ENABLE_OPENJDK_THREAD_SUPPORT=false
+
+  if test "x$enable_openjdk_thread_support" = xyes ; then
+    AC_MSG_RESULT([yes (explicitly enabled)])
+    OPENJ9_ENABLE_OPENJDK_THREAD_SUPPORT=true
+  elif test "x$enable_openjdk_thread_support" = xno ; then
+    AC_MSG_RESULT([no (explicitly disabled)])
+  elif test "x$enable_openjdk_thread_support" = x ; then
+    AC_MSG_RESULT([no (default)])
+  else
+    AC_MSG_ERROR([--enable-openjdk-thread-support accepts no argument])
+  fi
+  AC_SUBST(OPENJ9_ENABLE_OPENJDK_THREAD_SUPPORT)
+])
+
 AC_DEFUN([OPENJ9_PLATFORM_SETUP],
 [
   AC_ARG_WITH(noncompressedrefs, [AS_HELP_STRING([--with-noncompressedrefs],
@@ -572,7 +592,6 @@ AC_DEFUN([OPENJ9_CHECK_NASM_VERSION],
       [NASM_VERSION=`$NASM -v | $SED -e 's/^.* \([2-9]\.[0-9][0-9]\.[0-9][0-9]\).*$/\1/'`]
       AC_MSG_ERROR([nasm version detected: $NASM_VERSION; required version 2.11+])
     fi
-    AC_SUBST([NASM])
   fi
 ])
 
@@ -594,7 +613,7 @@ AC_DEFUN_ONCE([CUSTOM_LATE_HOOK],
 
   if test "x$OPENJDK_BUILD_OS" = xwindows ; then
     OPENJ9_TOOL_DIR="$OUTPUTDIR/tools"
-    AC_SUBST([OPENJ9_TOOL_DIR])
+    AC_SUBST(OPENJ9_TOOL_DIR)
     OPENJ9_GENERATE_TOOL_WRAPPERS
 
     # We used to rely on VS_INCLUDE and VS_LIB directly, but those are no longer available
@@ -604,7 +623,7 @@ AC_DEFUN_ONCE([CUSTOM_LATE_HOOK],
     AC_SUBST(OPENJ9_VS_INCLUDE)
     AC_SUBST(OPENJ9_VS_LIB)
   fi
-  AC_SUBST([SYSROOT])
+  AC_SUBST(SYSROOT)
   AC_CONFIG_FILES([$OUTPUTDIR/toolchain.cmake:$CLOSED_AUTOCONF_DIR/toolchain.cmake.in])
 ])
 
@@ -628,11 +647,6 @@ AC_DEFUN([CONFIGURE_OPENSSL],
     fi
     # Process --with-openssl=fetched
     if test "x$with_openssl" = xfetched ; then
-      if test "x$OPENJDK_BUILD_OS" = xwindows ; then
-        AC_MSG_RESULT([no])
-        printf "On Windows, value of \"fetched\" is currently not supported with --with-openssl. Please build OpenSSL using VisualStudio outside cygwin and specify the path with --with-openssl\n"
-        AC_MSG_ERROR([Cannot continue])
-      fi
       if test -d "$TOPDIR/openssl" ; then
         OPENSSL_DIR="$TOPDIR/openssl"
         OPENSSL_CFLAGS="-I${OPENSSL_DIR}/include"
@@ -645,6 +659,8 @@ AC_DEFUN([CONFIGURE_OPENSSL],
           OPENSSL_BUNDLE_LIB_PATH="${OPENSSL_DIR}"
         fi
         AC_MSG_RESULT([yes])
+        # perl is required to build openssl
+        UTIL_REQUIRE_PROGS(PERL, perl)
       else
         AC_MSG_RESULT([no])
         printf "$TOPDIR/openssl is not found.\n"
