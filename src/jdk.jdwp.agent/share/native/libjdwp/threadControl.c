@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -243,7 +243,6 @@ static ThreadNode *
 findThread(ThreadList *list, jthread thread)
 {
     ThreadNode *node;
-    JNIEnv *env = getEnv();
 
     /* Get thread local storage for quick thread -> node access */
     node = getThreadLocalStorage(thread);
@@ -1573,15 +1572,10 @@ threadControl_suspendCount(jthread thread, jint *count)
 {
     jvmtiError  error;
     ThreadNode *node;
-    jboolean is_vthread = isVThread(thread);
 
     debugMonitorEnter(threadLock);
 
-    if (is_vthread) {
-        node = findThread(&runningVThreads, thread);
-    } else {
-        node = findThread(&runningThreads, thread);
-    }
+    node = findRunningThread(thread);
     if (node == NULL) {
         node = findThread(&otherThreads, thread);
     }
@@ -1594,7 +1588,7 @@ threadControl_suspendCount(jthread thread, jint *count)
          * If the node is in neither list, the debugger never suspended
          * this thread, so the suspend count is 0.
          */
-      if (is_vthread) {
+      if (isVThread(thread)) {
           jint vthread_state = 0;
           jvmtiError error = threadState(thread, &vthread_state);
           if (error != JVMTI_ERROR_NONE) {
@@ -2549,9 +2543,6 @@ threadControl_interrupt(jthread thread)
     ThreadNode *node;
     jvmtiError  error;
 
-    // vthread fixme: should this work for vthreads?
-    JDI_ASSERT(!isVThread(thread));
-
     error = JVMTI_ERROR_NONE;
 
     log_debugee_location("threadControl_interrupt()", thread, NULL, 0);
@@ -2892,15 +2883,6 @@ jboolean threadControl_isKnownVThread(jthread vthread) {
     vthreadNode = findThread(&runningVThreads, vthread);
     debugMonitorExit(threadLock);
     return vthreadNode != NULL;
-}
-
-void
-threadControl_addVThread(jthread vthread)
-{
-    ThreadNode *vthreadNode;
-    debugMonitorEnter(threadLock);
-    vthreadNode = insertThread(getEnv(), &runningVThreads, vthread);
-    debugMonitorExit(threadLock);
 }
 
 /***** debugging *****/
