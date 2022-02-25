@@ -153,7 +153,7 @@ public abstract class CallArranger {
     }
 
     /* Replace ProgrammableInvoker in OpenJDK with the implementation of ProgrammableInvoker specific to OpenJ9 */
-    public static MethodHandle arrangeDowncall(MethodType mt, FunctionDescriptor cDesc) {
+    public MethodHandle arrangeDowncall(MethodType mt, FunctionDescriptor cDesc) {
         MethodHandle handle = ProgrammableInvoker.getBoundMethodHandle(mt, cDesc);
         return handle;
     }
