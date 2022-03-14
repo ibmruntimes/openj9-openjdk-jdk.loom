@@ -26,6 +26,7 @@
 package sun.nio.fs;
 
 import jdk.internal.misc.Blocker;
+import java.util.function.Function;
 
 /**
  * Unix system and library calls.
@@ -96,12 +97,30 @@ class UnixNativeDispatcher {
     /**
      * close(int filedes). If fd is -1 this is a no-op.
      */
-    static void close(int fd) {
+    static void close(int fd) throws UnixException {
         if (fd != -1) {
             close0(fd);
         }
     }
-    private static native void close0(int fd);
+    private static native void close0(int fd) throws UnixException;
+
+    /**
+     * close(fd). If close fails then the given exception supplier function is
+     * invoked to produce an exception to throw. If the function returns null
+     * then no exception is thrown. If close fails and the exception supplier
+     * function is null, then no exception is thrown.
+     */
+    static <X extends Throwable>
+    void close(int fd, Function<UnixException, X> mapper) throws X {
+        try {
+            close(fd);
+        } catch (UnixException e) {
+            if (mapper != null) {
+                X ex = mapper.apply(e);
+                if (ex != null) throw ex;
+            }
+        }
+    }
 
     /**
      * void rewind(FILE* stream);
