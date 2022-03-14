@@ -459,10 +459,9 @@ stop(PacketInputStream *in, PacketOutputStream *out)
         return JNI_TRUE;
     }
 
-    /* vthread fixme: We should just call throught to JVMTI and let the failure come from
-       there, but first we need a test that exercises this code for vthreads. */
+    /* "stop" is not supported on a vthread. Although JVMTI will produce INVALID_THREAD, we
+       check here and force the error to make it obvious to the reader. */
     if (isVThread(thread)) {
-        tty_message("ThreadReferenceImpl::stop() not supported.");
         outStream_setError(out, JDWP_ERROR(INVALID_THREAD));
         return JNI_TRUE;
     }

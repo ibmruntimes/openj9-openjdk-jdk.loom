@@ -37,11 +37,8 @@
 /dist/
 /.idea/
 /.vscode/
-/.cache/clangd/
-/compile_commands.json
 /nbproject/
 nbproject/private/
-make/nb_native/nbproject/private
 /webrev
 /.src-rev
 /.jib/
@@ -56,7 +53,3 @@ NashornProfile.txt
 /src/utils/LogCompilation/target/
 /.project/
 /.settings/
-/src/utils/hsdis/build/
-/test/micro/.idea/
-/test/micro/bench.iml
-/test/micro/target/

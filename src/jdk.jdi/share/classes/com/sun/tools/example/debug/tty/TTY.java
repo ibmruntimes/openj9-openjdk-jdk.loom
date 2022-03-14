@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1164,7 +1164,7 @@ public class TTY implements EventNotifier {
         }
 
         if (connectSpec.startsWith("com.sun.jdi.CommandLineLaunch:")) {
-            connectSpec += "enumeratevthreads=y,notifyvthreads=y,";
+            connectSpec += "enumeratevthreads=y,";
         }
 
         try {

@@ -191,7 +191,6 @@ public abstract class Reference<T> {
     /* High-priority thread to enqueue pending References
      */
     private static class ReferenceHandler extends Thread {
-
         ReferenceHandler(ThreadGroup g, String name) {
             super(g, null, name, 0, false);
         }
@@ -294,11 +293,7 @@ public abstract class Reference<T> {
     /**
      * Start the Reference Handler thread as a daemon thread.
      */
-    static void startReferenceHandlerThread() {
-        ThreadGroup tg = Thread.currentThread().getThreadGroup();
-        for (ThreadGroup tgn = tg;
-             tgn != null;
-             tg = tgn, tgn = tg.getParent());
+    static void startReferenceHandlerThread(ThreadGroup tg) {
         Thread handler = new ReferenceHandler(tg, "Reference Handler");
         /* If there were a special system-only priority greater than
          * MAX_PRIORITY, it would be used here
@@ -313,8 +308,12 @@ public abstract class Reference<T> {
         SharedSecrets.setJavaLangRefAccess(new JavaLangRefAccess() {
             @Override
             public void startThreads() {
-                Finalizer.startFinalizerThread();
-                Reference.startReferenceHandlerThread();
+                ThreadGroup tg = Thread.currentThread().getThreadGroup();
+                for (ThreadGroup tgn = tg;
+                     tgn != null;
+                     tg = tgn, tgn = tg.getParent());
+                Reference.startReferenceHandlerThread(tg);
+                Finalizer.startFinalizerThread(tg);
             }
 
             @Override

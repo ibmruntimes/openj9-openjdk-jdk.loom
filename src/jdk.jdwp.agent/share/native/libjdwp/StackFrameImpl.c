@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -448,7 +448,6 @@ popFrames(PacketInputStream *in, PacketOutputStream *out)
     }
 
     fnum = getFrameNumber(frame);
-    /* vthread fixme: add vthread support */
     error = threadControl_popFrames(thread, fnum);
     if (error != JVMTI_ERROR_NONE) {
         serror = map2jdwpError(error);

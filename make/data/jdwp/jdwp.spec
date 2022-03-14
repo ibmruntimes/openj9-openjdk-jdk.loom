@@ -92,14 +92,18 @@ JDWP "Java(tm) Debug Wire Protocol"
         )
     )
     (Command AllThreads=4
-        "Returns the live "
-        "<a href=../../api/java.base/java/lang/Thread.html#platform-threads>platform threads</a> "
-        "in the target VM. The returned list contains platform threads created with "
-        "the java.lang.Thread API and all native threads attached to the target VM "
-        "through JNI. It does not contain "
-        "<a href=../../api/java.base/java/lang/Thread.html#virtual-threads>virtual threads</a>. "
-        "Threads that have not yet been started and threads that have completed "
-        "their execution are also not included in the returned list."
+        "Returns the live threads in the target VM. Threads that have not yet "
+        "started or threads that have terminated are not included in the list."
+        "<p>"
+        "The returned list contains a threadID for each live "
+        "<a href=../../api/java.base/java/lang/Thread.html#platform-threads>platform thread</a> "
+        "in the target VM. This includes platform threads created with the Thread "
+        "API and and all native threads attached to the target VM with JNI code."
+        "<p>"
+        "It is implementation dependent if the list contains threadIDs for live "
+        "<a href=../../api/java.base/java/lang/Thread.html#virtual-threads>virtual threads</a> "
+        "in the target VM. The target VM may not return threadIDs for virtual threads, "
+        "or it may be configured to return a threadID for some or all virtual threads."
         (Out
         )
         (Reply
@@ -2004,6 +2008,11 @@ JDWP "Java(tm) Debug Wire Protocol"
     )
     (Command Stop=10
         "Stops the thread with an asynchronous exception. "
+        "<p>"
+        "The target VM may not support, or may only provide limited support, for "
+        "this command when the thread is a virtual thread. It may, for example, "
+        "only support this command when the virtual thread is suspended at a "
+        "breakpoint or singlestep event."
         (Out
             (threadObject thread "The thread object ID. ")
             (object throwable "Asynchronous exception. This object must "
@@ -2012,9 +2021,13 @@ JDWP "Java(tm) Debug Wire Protocol"
         (Reply "none"
         )
         (ErrorSet
-            (Error INVALID_THREAD)
+            (Error INVALID_THREAD "The thread is null, not a valid thread, or the "
+                                  "thread is a virtual thread and the target VM does "
+                                  "not support stopping it with an asynchronous "
+                                  "exception at this time.")
             (Error INVALID_OBJECT "If thread is not a known ID or the asynchronous "
                                   "exception has been garbage collected.")
+            (Error THREAD_NOT_ALIVE)
             (Error VM_DEAD)
         )
     )
@@ -2093,6 +2106,11 @@ JDWP "Java(tm) Debug Wire Protocol"
         "command and resumption of thread execution, the "
         "state of the stack is undefined. "
         "<p>"
+        "The target VM may not support, or may only provide limited support, for "
+        "this command when the thread is a virtual thread. It may, for example, "
+        "only support this command when the virtual thread is suspended at a "
+        "breakpoint or singlestep event."
+        "<p>"
         "No further instructions are executed in the called "
         "method. Specifically, finally blocks are not executed. Note: "
         "this can cause inconsistent states in the application. "
@@ -2131,7 +2149,10 @@ JDWP "Java(tm) Debug Wire Protocol"
             (Error THREAD_NOT_ALIVE)
             (Error OPAQUE_FRAME      "Attempted to return early from "
                                      "a frame corresponding to a native "
-                                     "method. Or the implementation is "
+                                     "method. "
+                                     "The thread is a virtual thread and the target "
+                                     "VM is unable force its current frame to return. "
+                                     "Or the implementation is "
                                      "unable to provide this functionality "
                                      "on this frame.")
             (Error NO_MORE_FRAMES)
@@ -2629,6 +2650,11 @@ JDWP "Java(tm) Debug Wire Protocol"
         "determine the correct local variable index. (Typically, this
         "index can be determined for method arguments from the method "
         "signature without access to the local variable table information.) "
+        "<p>"
+        "If the thread is a virtual thread then this command can be used to set "
+        "the value of local variables in the the top-most frame when the thread is "
+        "suspended at a breakpoint or single step event. The target VM may support "
+        "setting local variables in other cases."
         (Out
             (threadObject thread "The frame's thread. ")
             (frame frame "The frame ID. ")
@@ -2645,6 +2671,9 @@ JDWP "Java(tm) Debug Wire Protocol"
             (Error INVALID_THREAD)
             (Error INVALID_OBJECT)
             (Error INVALID_FRAMEID)
+            (Error OPAQUE_FRAME      "The thread is a virtual thread and the target VM "
+                                     "does not support setting the value of local "
+                                     "variables in the frame.")
             (Error VM_DEAD)
         )
     )
@@ -2675,6 +2704,11 @@ JDWP "Java(tm) Debug Wire Protocol"
         "<code>objectref</code> is added back as well. The Java virtual machine "
         "program counter is restored to the opcode of the invoke instruction."
         "<p>"
+        "The target VM may not support, or may only provide limited support, for this "
+        "command when the thread is a virtual thread. It may, for example, only support "
+        "this command when the virtual thread is suspended at a breakpoint or singlestep "
+        "event."
+        "<p>"
         "Since JDWP version 1.4. Requires canPopFrames capability - see "
         "<a href=\"#JDWP_VirtualMachine_CapabilitiesNew\">CapabilitiesNew</a>."
         (Out
@@ -2689,7 +2723,10 @@ JDWP "Java(tm) Debug Wire Protocol"
             (Error INVALID_FRAMEID)
             (Error THREAD_NOT_SUSPENDED)
             (Error NO_MORE_FRAMES)
-            (Error INVALID_FRAMEID)
+            (Error OPAQUE_FRAME      "If one or more of the frames to pop is a native "
+                                     "method or its caller is a native method, or the "
+                                     "thread is a virtual thread and the implementation "
+                                     "is unable to pop the frames.")
             (Error NOT_IMPLEMENTED)
             (Error VM_DEAD)
         )
@@ -3125,14 +3162,13 @@ JDWP "Java(tm) Debug Wire Protocol"
 )
 (ConstantSet Error
     (Constant NONE                   =0   "No error has occurred.")
-    (Constant INVALID_THREAD         =10  "Passed thread is null, is not a valid thread or has exited.")
+    (Constant INVALID_THREAD         =10  "The thread is null or not a valid thread")
     (Constant INVALID_THREAD_GROUP   =11  "Thread group invalid.")
     (Constant INVALID_PRIORITY       =12  "Invalid priority.")
     (Constant THREAD_NOT_SUSPENDED   =13  "If the specified thread has not been "
                                           "suspended by an event.")
     (Constant THREAD_SUSPENDED       =14  "Thread already suspended.")
-    (Constant THREAD_NOT_ALIVE       =15  "Thread has not been started or is now dead.")
-
+    (Constant THREAD_NOT_ALIVE       =15  "Thread has not been started or has terminated.")
     (Constant INVALID_OBJECT         =20  "If this reference type has been unloaded "
                                           "and garbage collected.")
     (Constant INVALID_CLASS          =21  "Invalid class.")
@@ -3143,7 +3179,9 @@ JDWP "Java(tm) Debug Wire Protocol"
     (Constant INVALID_FRAMEID        =30  "Invalid jframeID.")
     (Constant NO_MORE_FRAMES         =31  "There are no more Java or JNI frames on the "
                                           "call stack.")
-    (Constant OPAQUE_FRAME           =32  "Information about the frame is not available.")
+    (Constant OPAQUE_FRAME           =32  "Information about the frame is not available "
+                                          "(e.g. native frame) or the target VM is unable "
+                                          "to perform an operation on the frame.")
     (Constant NOT_CURRENT_FRAME      =33  "Operation can only be performed on current frame.")
     (Constant TYPE_MISMATCH          =34  "The variable is not an appropriate type for "
                                           "the function used.")

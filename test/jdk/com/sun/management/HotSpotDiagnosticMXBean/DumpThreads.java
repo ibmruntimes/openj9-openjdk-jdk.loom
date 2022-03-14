@@ -30,6 +30,7 @@
 
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,21 +54,28 @@ public class DumpThreads {
         Path file = genOutputPath("txt");
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Thread vthread = forkParker(executor);
-
-            mbean.dumpThreads(file.toString(), ThreadDumpFormat.TEXT_PLAIN);
-            cat(file);
-
-            // virtual thread should be found
             try {
+                mbean.dumpThreads(file.toString(), ThreadDumpFormat.TEXT_PLAIN);
+                cat(file);
+
+                // pid should be on the first line
+                String pid = "" + ProcessHandle.current().pid();
+                assertTrue(line(file, 0).contains(pid));
+
+                // runtime version should be on third line
+                String vs = Runtime.version().toString();
+                assertTrue(line(file, 2).contains(vs));
+
+                // virtual thread should be found
                 assertTrue(isPresent(file, vthread));
+
+                // if the current thread is a platform thread then it should be included
+                Thread currentThread = Thread.currentThread();
+                if (!currentThread.isVirtual()) {
+                    assertTrue(isPresent(file, currentThread));
+                }
             } finally {
                 LockSupport.unpark(vthread);
-            }
-
-            // if the current thread is a platform thread then it should be included
-            Thread currentThread = Thread.currentThread();
-            if (!currentThread.isVirtual()) {
-                assertTrue(isPresent(file, currentThread));
             }
         } finally {
             Files.deleteIfExists(file);
@@ -83,53 +91,68 @@ public class DumpThreads {
         Path file = genOutputPath("json");
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Thread vthread = forkParker(executor);
-
-            mbean.dumpThreads(file.toString(), ThreadDumpFormat.JSON);
-            cat(file);
-
-            assertTrue(count(file, "threadDump") >= 1L);
-            assertTrue(count(file, "threadContainers") >= 1L);
-            assertTrue(count(file, "threads") >= 1L);
-
-            // virtual thread should be found
             try {
+                mbean.dumpThreads(file.toString(), ThreadDumpFormat.JSON);
+                cat(file);
+
+                assertTrue(count(file, "threadDump") >= 1L);
+                assertTrue(count(file, "time") >= 1L);
+                assertTrue(count(file, "runtimeVersion") >= 1L);
+                assertTrue(count(file, "threadContainers") >= 1L);
+                assertTrue(count(file, "threads") >= 1L);
+
+                // virtual thread should be found
                 assertTrue(isJsonPresent(file, vthread));
+
+                // if the current thread is a platform thread then it should be included
+                Thread currentThread = Thread.currentThread();
+                if (!currentThread.isVirtual()) {
+                    assertTrue(isJsonPresent(file, currentThread));
+                }
+
             } finally {
                 LockSupport.unpark(vthread);
-            }
-
-            // if the current thread is a platform thread then it should be included
-            Thread currentThread = Thread.currentThread();
-            if (!currentThread.isVirtual()) {
-                assertTrue(isJsonPresent(file, currentThread));
             }
         } finally {
             Files.deleteIfExists(file);
         }
     }
 
-    @Test(expectedExceptions = { IllegalArgumentException.class })
-    public void testRelativePath1() throws Exception {
+    /**
+     * Test that dumpThreads throws if the output file already exists.
+     */
+    @Test
+    public void testFileAlreadyExsists() throws Exception {
         var mbean = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
-        mbean.dumpThreads("threads.txt", ThreadDumpFormat.TEXT_PLAIN);
+        String file = Files.createFile(genOutputPath("txt")).toString();
+        assertThrows(FileAlreadyExistsException.class,
+                () -> mbean.dumpThreads(file, ThreadDumpFormat.TEXT_PLAIN));
+        assertThrows(FileAlreadyExistsException.class,
+                () -> mbean.dumpThreads(file, ThreadDumpFormat.JSON));
     }
 
-    @Test(expectedExceptions = { IllegalArgumentException.class })
-    public void testRelativePath2() throws Exception {
+    /**
+     * Test that dumpThreads throws if the file path is relative.
+     */
+    @Test
+    public void testRelativePath() throws Exception {
         var mbean = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
-        mbean.dumpThreads("threads.json", ThreadDumpFormat.JSON);
+        assertThrows(IllegalArgumentException.class,
+                () -> mbean.dumpThreads("threads.txt", ThreadDumpFormat.TEXT_PLAIN));
+        assertThrows(IllegalArgumentException.class,
+                () -> mbean.dumpThreads("threads.json", ThreadDumpFormat.JSON));
     }
 
-    @Test(expectedExceptions = { NullPointerException.class })
-    public void testNull1() throws Exception {
+    /**
+     * Test that dumpThreads throws with null parameters.
+     */
+    @Test
+    public void testNull() throws Exception {
         var mbean = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
-        mbean.dumpThreads(null, ThreadDumpFormat.TEXT_PLAIN);
-    }
-
-    @Test(expectedExceptions = { NullPointerException.class })
-    public void testNull2() throws Exception {
-        var mbean = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
-        mbean.dumpThreads(genOutputPath("txt").toString(), null);
+        assertThrows(NullPointerException.class,
+                () -> mbean.dumpThreads(null, ThreadDumpFormat.TEXT_PLAIN));
+        assertThrows(NullPointerException.class,
+                () -> mbean.dumpThreads(genOutputPath("txt").toString(), null));
     }
 
     /**
@@ -181,6 +204,12 @@ public class DumpThreads {
     private static void cat(Path file) throws Exception {
         try (Stream<String> stream = Files.lines(file)) {
             stream.forEach(System.out::println);
+        }
+    }
+
+    private String line(Path file, long n) throws Exception {
+        try (Stream<String> stream = Files.lines(file)) {
+            return stream.skip(n).findFirst().orElseThrow();
         }
     }
 }
