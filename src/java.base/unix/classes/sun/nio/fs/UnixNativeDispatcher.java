@@ -25,6 +25,7 @@
 
 package sun.nio.fs;
 
+import java.util.function.Function;
 import jdk.internal.misc.Blocker;
 import java.util.function.Function;
 

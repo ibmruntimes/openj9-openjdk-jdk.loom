@@ -94,7 +94,6 @@ gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
 # :hotspot_runtime
 
 runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
-runtime/cds/DeterministicDump.java 8253495 generic-all
 runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#explicit-large-page-size 8267460 linux-aarch64
@@ -179,11 +178,9 @@ vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEa
 
 # Loom specific
 
-serviceability/jvmti/Heap/IterateHeapWithEscapeAnalysisEnabled.java	          8264699 generic-all
+runtime/Thread/StopAtExit.java                                               8283610 generic-all
 
-# SA needs update
-serviceability/sa/ClhsdbThreadContext.java                                    8243016 generic-all
-serviceability/sa/JhsdbThreadInfoTest.java                                    8243016 generic-all
+serviceability/jvmti/Heap/IterateHeapWithEscapeAnalysisEnabled.java	     8264699 generic-all
 
 # Stratum mismatch
 vmTestbase/vm/mlvm/indy/func/jdi/breakpointOtherStratum/Test.java            8276713 generic-all

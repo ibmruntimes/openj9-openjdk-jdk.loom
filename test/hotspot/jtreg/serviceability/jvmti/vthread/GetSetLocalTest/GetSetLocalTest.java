@@ -24,6 +24,7 @@
 /**
  * @test
  * @summary Verifies JVMTI GetLocalXXX/SetLocalXXX support for virtual threads.
+ * @library /test/lib
  * @compile --enable-preview -source ${jdk.version} GetSetLocalTest.java
  * @run main/othervm/native --enable-preview -agentlib:GetSetLocalTest GetSetLocalTest
  */
@@ -35,8 +36,11 @@ public class GetSetLocalTest {
 
     static final int MSG_COUNT = 600*1000;
     static final SynchronousQueue<String> QUEUE = new SynchronousQueue<>();
+    static native boolean completed();
     static native void enableEvents(Thread thread);
     static native void testSuspendedVirtualThreads(Thread thread);
+    static Thread producer;
+    static Thread consumer;
 
     static void producer(String msg) throws InterruptedException {
         Thread tt = Thread.currentThread();
@@ -52,6 +56,10 @@ public class GetSetLocalTest {
     static final Runnable PRODUCER = () -> {
         try {
             for (int i = 0; i < MSG_COUNT; i++) {
+                if (completed()) {
+                    consumer.interrupt();
+                    break;
+                }
                 producer("msg: ");
             }
         } catch (InterruptedException e) { }
@@ -62,12 +70,14 @@ public class GetSetLocalTest {
             for (int i = 0; i < MSG_COUNT; i++) {
                 String s = QUEUE.take();
             }
-        } catch (InterruptedException e) { }
+        } catch (InterruptedException e) {
+            System.err.println("CONSUMER was interrupted!");
+        }
     };
 
     public static void test1() throws Exception {
-        Thread producer = Thread.ofVirtual().name("VThread-Producer").start(PRODUCER);
-        Thread consumer = Thread.ofVirtual().name("VThread-Consumer").start(CONSUMER);
+        producer = Thread.ofVirtual().name("VThread-Producer").start(PRODUCER);
+        consumer = Thread.ofVirtual().name("VThread-Consumer").start(CONSUMER);
 
         testSuspendedVirtualThreads(producer);
         enableEvents(producer);
