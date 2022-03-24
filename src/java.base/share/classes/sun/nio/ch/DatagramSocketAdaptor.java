@@ -210,18 +210,17 @@ public class DatagramSocketAdaptor
             } else {
                 target = (InetSocketAddress) p.getSocketAddress();
             }
-            // send datagram
-            try {
-                dc.blockingSend(bb, target);
-            } catch (AlreadyConnectedException e) {
-                throw new IllegalArgumentException("Connected and packet address differ");
-            } catch (ClosedChannelException e) {
-                throw new SocketException("Socket closed", e);
-            }
-        } finally {
-            if (bb != null) {
-                Util.offerFirstTemporaryDirectBuffer(bb);
-            }
+        }
+
+        // send datagram
+        try {
+            dc.blockingSend(ba, off, len, target);
+        } catch (AlreadyConnectedException e) {
+            throw new IllegalArgumentException("Connected and packet address differ");
+        } catch (ClosedChannelException e) {
+            var exc = new SocketException("Socket closed");
+            exc.initCause(e);
+            throw exc;
         }
     }
 
@@ -241,8 +240,6 @@ public class DatagramSocketAdaptor
             throw e;
         } catch (ClosedChannelException e) {
             throw new SocketException("Socket closed", e);
-        } finally {
-            Util.offerFirstTemporaryDirectBuffer(bb);
         }
     }
 
