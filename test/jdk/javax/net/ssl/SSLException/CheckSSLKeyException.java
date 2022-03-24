@@ -1,16 +1,10 @@
 /*
-<<<<<<< HEAD:closed/src/java.base/share/classes/sun/security/provider/NativeSHA.java
- * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
-=======
  * Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
->>>>>>> master:test/jdk/javax/net/ssl/SSLException/CheckSSLKeyException.java
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,23 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-<<<<<<< HEAD:closed/src/java.base/share/classes/sun/security/provider/NativeSHA.java
-/*
- * ===========================================================================
- * (c) Copyright IBM Corp. 2018, 2019 All Rights Reserved
- * ===========================================================================
- */
-
-package sun.security.provider;
-
-public final class NativeSHA extends NativeDigest {
-
-    /**
-     * Creates a new native SHA object.
-     */
-    public NativeSHA() {
-        super("SHA-1", 20, 0);
-=======
 
 /*
  * @test
@@ -69,6 +46,5 @@ public class CheckSSLKeyException {
         if (ex.getCause() != exceptionCause) {
             throw new RuntimeException("Unexpected exception cause");
         }
->>>>>>> master:test/jdk/javax/net/ssl/SSLException/CheckSSLKeyException.java
     }
 }
