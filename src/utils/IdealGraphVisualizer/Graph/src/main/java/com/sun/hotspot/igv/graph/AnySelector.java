@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 1997, 2003, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,26 +19,28 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
-#include "java_net_InetAddressImplFactory.h"
-#include "net_util.h"
+package com.sun.hotspot.igv.graph;
 
-/*
- * InetAddressImplFactory
- */
+import java.util.List;
+import java.util.ArrayList;
 
+// Selects blocks where any node is selected.
+public class AnySelector implements BlockSelector {
 
-/*
- * Class:     java_net_InetAddressImplFactory
- * Method:    isIPv6Supported
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL
-Java_java_net_InetAddressImplFactory_isIPv6Supported(JNIEnv *env, jobject this)
-{
-    if (ipv6_available()) {
-        return JNI_TRUE;
-    } else {
-        return JNI_FALSE;
+    private final Selector selector;
+
+    public AnySelector(Selector s) {
+        this.selector = s;
+    }
+
+    @Override
+    public List<Block> selected(Diagram d) {
+        List<Block> l = new ArrayList<>();
+        for (Figure f : selector.selected(d)) {
+            l.add(d.getBlock(f.getBlock()));
+        }
+        return l;
     }
 }
