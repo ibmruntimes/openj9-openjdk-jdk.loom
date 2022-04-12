@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -314,7 +314,13 @@ public final class ProcessTools {
         String[] doubleWordArgs = {"-cp", "-classpath", "--add-opens", "--class-path", "--upgrade-module-path",
                                    "--add-modules", "-d", "--add-exports", "--patch-module", "--module-path"};
 
-        if (noModule && System.getProperty("main.wrapper") != null) {
+        // When test is executed with process wrapper the line is changed to
+        // java <jvm-args> jdk.test.lib.process.ProcessTools <test-class>
+        String mainWrapper = System.getProperty("main.wrapper");
+        if (noModule && mainWrapper != null) {
+            if (mainWrapper.equalsIgnoreCase("virtual")) {
+                args.add("--enable-preview");
+            }
             boolean skipNext = false;
             boolean added = false;
             for (String cmd : command) {
@@ -358,10 +364,8 @@ public final class ProcessTools {
                     continue;
                 }
                 args.add("jdk.test.lib.process.ProcessTools");
-                args.add(System.getProperty("main.wrapper"));
+                args.add(mainWrapper);
                 added = true;
-                // Should be main
-                // System.out.println("Wrapped TOFIND: " + cmd);
                 args.add(cmd);
             }
         } else {
@@ -760,6 +764,7 @@ public final class ProcessTools {
     }
 
     // ProcessTools as a wrapper
+    // It executes method main in a separate virtual or platform thread
     public static void main(String[] args) throws Throwable {
         String wrapper = args[0];
         String className = args[1];
@@ -770,8 +775,9 @@ public final class ProcessTools {
         mainMethod.setAccessible(true);
 
         if (wrapper.equals("Virtual")) {
+            // MainThreadGroup used just as a container for exceptions
+            // when main is executed in virtual thread
             MainThreadGroup tg = new MainThreadGroup();
-            // TODO fix to set virtual scheduler group when become available
             Thread vthread = startVirtualThread(() -> {
                     try {
                         mainMethod.invoke(null, new Object[] { classArgs });
@@ -781,6 +787,9 @@ public final class ProcessTools {
                         tg.uncaughtThrowable = error;
                     }
                 });
+            if (tg.uncaughtThrowable != null) {
+                throw new RuntimeException(tg.uncaughtThrowable);
+            }
             vthread.join();
         } else if (wrapper.equals("Kernel")) {
             MainThreadGroup tg = new MainThreadGroup();
