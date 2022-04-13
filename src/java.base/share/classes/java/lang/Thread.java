@@ -2433,6 +2433,10 @@ public class Thread implements Runnable {
         contextClassLoader = cl;
     }
 
+    void internalSetContextClassLoader(ClassLoader cl) {
+        contextClassLoader = cl;
+    }
+
     /**
      * Returns true if the given ClassLoader is a "supported" class loader. All
      * class loaders, except ClassLoaders.NOT_SUPPORTED, are considered supported.
