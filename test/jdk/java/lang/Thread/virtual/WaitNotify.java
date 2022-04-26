@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,14 @@
 /**
  * @test
  * @summary Test virtual threads using Object.wait/notifyAll
+ * @library /test/lib
  * @compile --enable-preview -source ${jdk.version} WaitNotify.java
  * @run testng/othervm --enable-preview WaitNotify
  */
 
 import java.util.concurrent.Semaphore;
 
+import jdk.test.lib.thread.VThreadRunner;
 import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
@@ -108,14 +110,14 @@ public class WaitNotify {
      */
     @Test
     public void testWaitNotify4() throws Exception {
-        TestHelper.runInVirtualThread(() -> {
+        VThreadRunner.run(() -> {
             Thread t = Thread.currentThread();
             t.interrupt();
             Object lock = new Object();
             synchronized (lock) {
                 try {
                     lock.wait();
-                    assertTrue(false);
+                    fail();
                 } catch (InterruptedException e) {
                     // interrupt status should be cleared
                     assertFalse(t.isInterrupted());
@@ -129,19 +131,34 @@ public class WaitNotify {
      */
     @Test
     public void testWaitNotify5() throws Exception {
-        TestHelper.runInVirtualThread(() -> {
+        VThreadRunner.run(() -> {
             Thread t = Thread.currentThread();
-            TestHelper.scheduleInterrupt(t, 1000);
+            scheduleInterrupt(t, 1000);
             Object lock = new Object();
             synchronized (lock) {
                 try {
                     lock.wait();
-                    assertTrue(false);
+                    fail();
                 } catch (InterruptedException e) {
                     // interrupt status should be cleared
                     assertFalse(t.isInterrupted());
                 }
             }
         });
+    }
+
+    /**
+     * Schedule a thread to be interrupted after a delay.
+     */
+    private static void scheduleInterrupt(Thread thread, long delay) {
+        Runnable interruptTask = () -> {
+            try {
+                Thread.sleep(delay);
+                thread.interrupt();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+        new Thread(interruptTask).start();
     }
 }

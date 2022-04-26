@@ -53,7 +53,7 @@ public class Continuation {
 
         StackChunk.init(); // ensure StackChunk class is initialized
 
-        String value = GetPropertyAction.privilegedGetProperty("jdk.preserveScopeLocalCache");
+        String value = GetPropertyAction.privilegedGetProperty("jdk.preserveExtentLocalCache");
         PRESERVE_SCOPE_LOCAL_CACHE = (value == null) || Boolean.parseBoolean(value);
     }
 
@@ -85,13 +85,12 @@ public class Continuation {
     }
 
     private static Pinned pinnedReason(int reason) {
-        switch (reason) {
-            case 2: return Pinned.CRITICAL_SECTION;
-            case 3: return Pinned.NATIVE;
-            case 4: return Pinned.MONITOR;
-            default:
-                throw new AssertionError("Unknown pinned reason: " + reason);
-        }
+        return switch (reason) {
+            case 2 -> Pinned.CRITICAL_SECTION;
+            case 3 -> Pinned.NATIVE;
+            case 4 -> Pinned.MONITOR;
+            default -> throw new AssertionError("Unknown pinned reason: " + reason);
+        };
     }
 
     private static Thread currentCarrierThread() {
@@ -112,7 +111,7 @@ public class Continuation {
         }
     }
 
-    private Runnable target;
+    private final Runnable target;
 
     /* While the native JVM code is aware that every continuation has a scope, it is, for the most part,
      * oblivious to the continuation hierarchy. The only time this hierarchy is traversed in native code
@@ -129,7 +128,7 @@ public class Continuation {
     private Object yieldInfo;
     private boolean preempted;
 
-    private Object[] scopeLocalCache;
+    private Object[] extentLocalCache;
 
     /**
      * Constructs a continuation
@@ -238,7 +237,7 @@ public class Continuation {
     public final void run() {
         while (true) {
             mount();
-            JLA.setScopeLocalCache(scopeLocalCache);
+            JLA.setExtentLocalCache(extentLocalCache);
 
             if (done)
                 throw new IllegalStateException("Continuation terminated");
@@ -261,8 +260,6 @@ public class Continuation {
                 }
             } finally {
                 fence();
-                StackChunk c = tail;
-
                 try {
                     assert isEmpty() == done : "empty: " + isEmpty() + " done: " + done + " cont: " + Integer.toHexString(System.identityHashCode(this));
                     JLA.setContinuation(currentCarrierThread(), this.parent);
@@ -273,11 +270,11 @@ public class Continuation {
 
                     unmount();
                     if (PRESERVE_SCOPE_LOCAL_CACHE) {
-                        scopeLocalCache = JLA.scopeLocalCache();
+                        extentLocalCache = JLA.extentLocalCache();
                     } else {
-                        scopeLocalCache = null;
+                        extentLocalCache = null;
                     }
-                    JLA.setScopeLocalCache(null);
+                    JLA.setExtentLocalCache(null);
                 } catch (Throwable e) { e.printStackTrace(); System.exit(1); }
             }
             // we're now in the parent continuation
@@ -307,7 +304,7 @@ public class Continuation {
     }
 
     @IntrinsicCandidate
-    private static int doYield() { throw new Error("Intrinsic not installed"); };
+    private static int doYield() { throw new Error("Intrinsic not installed"); }
 
     @IntrinsicCandidate
     private native static void enterSpecial(Continuation c, boolean isContinue, boolean isVirtualThread);
@@ -457,20 +454,9 @@ public class Continuation {
 
     static private native int isPinned0(ContinuationScope scope);
 
-    private void clean() {
-        // if (!isStackEmpty())
-        //     clean0();
-    }
-
     private boolean fence() {
         U.storeFence(); // needed to prevent certain transformations by the compiler
         return true;
-    }
-
-    private static Map<Long, Integer> liveNmethods = new ConcurrentHashMap<>();
-
-    private void processNmethods(int before, int after) {
-
     }
 
     private boolean compareAndSetMounted(boolean expectedValue, boolean newValue) {
@@ -479,16 +465,13 @@ public class Continuation {
      }
 
     private void setMounted(boolean newValue) {
-        mounted = newValue;
-        // MOUNTED.setVolatile(this, newValue);
+        mounted = newValue; // MOUNTED.setVolatile(this, newValue);
     }
 
     private String id() {
         return Integer.toHexString(System.identityHashCode(this))
                 + " [" + currentCarrierThread().threadId() + "]";
     }
-
-    // private native void clean0();
 
     /**
      * Tries to forcefully preempt this continuation if it is currently mounted on the given thread

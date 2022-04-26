@@ -45,7 +45,7 @@ import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.Continuation;
-import jdk.internal.vm.ScopeLocalContainer;
+import jdk.internal.vm.ExtentLocalContainer;
 import jdk.internal.vm.StackableScope;
 import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
@@ -114,8 +114,6 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * <em>carrier threads</em>. Locking and I/O operations are examples of operations
  * where a carrier thread may be re-scheduled from one virtual thread to another.
  * Code executing in a virtual thread is not aware of underlying carrier thread.
- *
- *
  * The {@linkplain Thread#currentThread()} method, used to obtain a reference
  * to the <i>current thread</i>, will always return the {@code Thread} object
  * for the virtual thread.
@@ -124,9 +122,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * getName} method returns the empty string if a thread name is not set.
  *
  * <p> Virtual threads are daemon threads and so do not prevent the Java virtual
- * machine from terminating. They have a fixed priority (see {@link #getPriority()
- * getPriority}). Virtual threads are not members of a thread group (see
- * {@link #getThreadGroup() getThreadGroup}).
+ * machine from terminating. Virtual threads have a fixed {@linkplain #getPriority()
+ * thread priority} that cannot be changed.
  *
  * <h2>Creating and starting threads</h2>
  *
@@ -181,6 +178,35 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * <p> Unless otherwise specified, passing a {@code null} argument to a constructor
  * or method in this class will cause a {@link NullPointerException} to be thrown.
  *
+ * @implNote
+ * In the JDK Reference Implementation, the virtual thread scheduler may be configured
+ * with the following system properties:
+ * <table class="striped">
+ * <caption style="display:none:">System properties</caption>
+ *   <thead>
+ *   <tr>
+ *     <th scope="col">System property</th>
+ *     <th scope="col">Description</th>
+ *   </tr>
+ *   </thead>
+ *   <tbody>
+ *   <tr>
+ *     <th scope="row">
+ *       {@systemProperty jdk.virtualThreadScheduler.parallelism}
+ *     </th>
+ *     <td> The number of platform threads available for scheduling virtual
+ *       threads. It defaults to the number of available processors. </td>
+ *   </tr>
+ *   <tr>
+ *     <th scope="row">
+ *       {@systemProperty jdk.virtualThreadScheduler.maxPoolSize}
+ *     </th>
+ *     <td> The maximum number of platform threads available to the scheduler.
+ *       It defaults to 256. </td>
+ *   </tr>
+ *   </tbody>
+ * </table>
+ *
  * @since   1.0
  */
 public class Thread implements Runnable {
@@ -209,7 +235,8 @@ public class Thread implements Runnable {
     @SuppressWarnings("removal")
     private AccessControlContext inheritedAccessControlContext;
 
-    // Additional fields for platform threads
+    // Additional fields for platform threads.
+    // All fields, except task, are accessed directly by the VM.
     private static class FieldHolder {
         final ThreadGroup group;
         final Runnable task;
@@ -246,34 +273,34 @@ public class Thread implements Runnable {
     ThreadLocal.ThreadLocalMap inheritableThreadLocals;
 
     /*
-     * Scope locals binding are maintained by the ScopeLocal class.
+     * Extent locals binding are maintained by the ExtentLocal class.
      */
-    private Object scopeLocalBindings;
+    private Object extentLocalBindings;
 
-    static Object scopeLocalBindings() {
-        return currentThread().scopeLocalBindings;
+    static Object extentLocalBindings() {
+        return currentThread().extentLocalBindings;
     }
 
-    static void setScopeLocalBindings(Object bindings) {
-        currentThread().scopeLocalBindings = bindings;
+    static void setExtentLocalBindings(Object bindings) {
+        currentThread().extentLocalBindings = bindings;
     }
 
     /**
-     * Inherit the scope-local bindings from the given container.
+     * Inherit the extent-local bindings from the given container.
      * Invoked when starting a thread.
      */
-    void inheritScopeLocalBindings(ThreadContainer container) {
-        ScopeLocalContainer.BindingsSnapshot snapshot;
+    void inheritExtentLocalBindings(ThreadContainer container) {
+        ExtentLocalContainer.BindingsSnapshot snapshot;
         if (container.owner() != null
-                && (snapshot = container.scopeLocalBindings()) != null) {
+                && (snapshot = container.extentLocalBindings()) != null) {
 
             // bindings established for running/calling an operation
-            Object bindings = snapshot.scopeLocalBindings();
-            if (currentThread().scopeLocalBindings != bindings) {
-                StructureViolationExceptions.throwException("Scope local bindings have changed");
+            Object bindings = snapshot.extentLocalBindings();
+            if (currentThread().extentLocalBindings != bindings) {
+                StructureViolationExceptions.throwException("Extent local bindings have changed");
             }
 
-            this.scopeLocalBindings = bindings;
+            this.extentLocalBindings = bindings;
         }
     }
 
@@ -360,13 +387,13 @@ public class Thread implements Runnable {
     @IntrinsicCandidate
     native void setCurrentThread(Thread thread);
 
-    // ScopeLocal support:
+    // ExtentLocal support:
 
     @IntrinsicCandidate
-    static native Object[] scopeLocalCache();
+    static native Object[] extentLocalCache();
 
     @IntrinsicCandidate
-    static native void setScopeLocalCache(Object[] cache);
+    static native void setExtentLocalCache(Object[] cache);
 
     /**
      * A hint to the scheduler that the current thread is willing to yield
@@ -601,7 +628,7 @@ public class Thread implements Runnable {
         if (sm == null || isCCLOverridden(parent.getClass())) {
             return parent.getContextClassLoader();
         } else {
-            // getContextClassLoader not trusted
+            // skip call to getContextClassLoader
             ClassLoader cl = parent.contextClassLoader;
             return (isSupportedClassLoader(cl)) ? cl : ClassLoader.getSystemClassLoader();
         }
@@ -748,6 +775,18 @@ public class Thread implements Runnable {
      * Returns a builder for creating a platform {@code Thread} or {@code ThreadFactory}
      * that creates platform threads.
      *
+     * <p> <a id="ofplatform-security"><b>Interaction with security manager when
+     * creating platform threads</b></a>
+     * <p> Creating a platform thread when there is a security manager set will
+     * invoke the security manager's {@link SecurityManager#checkAccess(ThreadGroup)
+     * checkAccess(ThreadGroup)} method with the thread's thread group.
+     * If the thread group has not been set with the {@link
+     * Builder.OfPlatform#group(ThreadGroup) OfPlatform.group} method then the
+     * security manager's {@link SecurityManager#getThreadGroup() getThreadGroup}
+     * method will be invoked first to select the thread group. If the security
+     * manager {@code getThreadGroup} method returns {@code null} then the thread
+     * group of the constructing thread is used.
+     *
      * @apiNote The following are examples using the builder:
      * {@snippet :
      *   // Start a daemon thread to run a task
@@ -762,12 +801,10 @@ public class Thread implements Runnable {
      * }
      *
      * @return A builder for creating {@code Thread} or {@code ThreadFactory} objects.
-     * @throws UnsupportedOperationException if preview features are not enabled
      * @since 19
      */
     @PreviewFeature(feature = PreviewFeature.Feature.VIRTUAL_THREADS)
     public static Builder.OfPlatform ofPlatform() {
-        PreviewFeatures.ensureEnabled();
         return new ThreadBuilders.PlatformThreadBuilder();
     }
 
@@ -859,7 +896,7 @@ public class Thread implements Runnable {
          * @param prefix thread name prefix
          * @param start the starting value of the counter
          * @return this builder
-         * @throws IllegalArgumentException if count is negative
+         * @throws IllegalArgumentException if start is negative
          */
         Builder name(String prefix, long start);
 
@@ -910,8 +947,13 @@ public class Thread implements Runnable {
          * Creates a new {@code Thread} from the current state of the builder to
          * run the given task. The {@code Thread}'s {@link Thread#start() start}
          * method must be invoked to schedule the thread to execute.
+         *
          * @param task the object to run when the thread executes
          * @return a new unstarted Thread
+         * @throws SecurityException if denied by the security manager
+         *         (See <a href="Thread.html#ofplatform-security">Interaction with
+         *         security manager when creating platform threads</a>)
+         *
          * @see <a href="Thread.html#inheritance">Inheritance when creating threads</a>
          */
         Thread unstarted(Runnable task);
@@ -922,6 +964,10 @@ public class Thread implements Runnable {
          *
          * @param task the object to run when the thread executes
          * @return a new started Thread
+         * @throws SecurityException if denied by the security manager
+         *         (See <a href="Thread.html#ofplatform-security">Interaction with
+         *         security manager when creating platform threads</a>)
+         *
          * @see <a href="Thread.html#inheritance">Inheritance when creating threads</a>
          */
         Thread start(Runnable task);
@@ -959,18 +1005,6 @@ public class Thread implements Runnable {
             @Override OfPlatform allowSetThreadLocals(boolean allow);
             @Override OfPlatform inheritInheritableThreadLocals(boolean inherit);
             @Override OfPlatform uncaughtExceptionHandler(UncaughtExceptionHandler ueh);
-
-            /**
-             * @throws SecurityException if a thread group has been set and the current
-             *         thread cannot create a thread in that thread group
-             */
-            @Override Thread unstarted(Runnable task);
-
-            /**
-             * @throws SecurityException if a thread group has been set and the current
-             *         thread cannot create a thread in that thread group
-             */
-            @Override Thread start(Runnable task);
 
             /**
              * Sets the thread group.
@@ -1512,8 +1546,8 @@ public class Thread implements Runnable {
             boolean started = false;
             container.onStart(this);  // may throw
             try {
-                // scope locals may be inherited
-                inheritScopeLocalBindings(container);
+                // extent locals may be inherited
+                inheritExtentLocalBindings(container);
 
                 // bind thread to container
                 setThreadContainer(container);
@@ -1552,7 +1586,7 @@ public class Thread implements Runnable {
     }
 
     /**
-     * Null out reference after Thread termination (JDK-4006245)
+     * Null out reference after Thread termination.
      */
     void clearReferences() {
         threadLocals = null;
@@ -1805,12 +1839,15 @@ public class Thread implements Runnable {
      *          {@code false} otherwise.
      */
     public final boolean isAlive() {
-        if (isVirtual()) {
-            State state = threadState();
-            return (state != State.NEW && state != State.TERMINATED);
-        } else {
-            return isAlive0();
-        }
+        return alive();
+    }
+
+    /**
+     * Returns true if this thread is alive.
+     * This method is non-final so it can be overridden.
+     */
+    boolean alive() {
+        return isAlive0();
     }
     private native boolean isAlive0();
 
@@ -1918,7 +1955,8 @@ public class Thread implements Runnable {
 
     /**
      * Returns this thread's priority.
-     * The priority of a virtual thread is always {@link Thread#NORM_PRIORITY}.
+     *
+     * <p> The priority of a virtual thread is always {@link Thread#NORM_PRIORITY}.
      *
      * @return  this thread's priority.
      * @see     #setPriority
@@ -1977,41 +2015,24 @@ public class Thread implements Runnable {
      * Returns the thread's thread group or {@code null} if the thread has
      * terminated.
      *
-     * <p> Virtual threads are not members of a thread group. If invoked on a
-     * virtual thread that has not terminated, this method returns a special
-     * thread group that behaves as follows:
-     * <ul>
-     *  <li> There are no {@linkplain ThreadGroup#activeCount() active} virtual
-     *       threads in the thread group. The {@link ThreadGroup#enumerate(Thread[])
-     *       enumerate} method does not enumerate virtual threads.
-     *  <li> There may be active platform threads in the thread group. The thread
-     *       group may be provided when creating a platform thread, the thread group
-     *       may be <a href="Thread.html#inheritance">inherited</a> when a
-     *       virtual thread creates a platform thread, or the thread group may
-     *       be inherited when a platform thread in the thread group creates
-     *       another platform thread.
-     *  <li> The {@linkplain ThreadGroup#getMaxPriority() maximum priority} of
-     *       the thread group is {@link Thread#NORM_PRIORITY} when initially
-     *       created. Changing the maximum priority of the thread group has no
-     *       impact on the priority of virtual threads.
-     * </ul>
+     * <p> The thread group returned for a virtual thread is the special
+     * <a href="ThreadGroup.html#virtualthreadgroup"><em>ThreadGroup for
+     * virtual threads</em></a>.
      *
      * @return  this thread's thread group or {@code null}
      */
     public final ThreadGroup getThreadGroup() {
-        if (Thread.currentThread() == this || (threadState() != State.TERMINATED)) {
-            return isVirtual() ? Constants.VTHREAD_GROUP : holder.group;
+        if (isTerminated()) {
+            return null;
         } else {
-            return null;   // terminated
+            return isVirtual() ? virtualThreadGroup() : holder.group;
         }
     }
 
     /**
-     * Returns an estimate of the number of active threads in the current
-     * thread's {@linkplain java.lang.ThreadGroup thread group} and its
-     * subgroups. Virtual threads are not considered active threads in a
-     * thread group so this method does not include virtual threads in the
-     * estimate.
+     * Returns an estimate of the number of {@linkplain #isAlive() live}
+     * platform threads in the current thread's thread group and its subgroups.
+     * Virtual threads are not included in the estimate.
      *
      * <p> The value returned is only an estimate because the number of
      * threads may change dynamically while this method traverses internal
@@ -2019,26 +2040,25 @@ public class Thread implements Runnable {
      * system threads. This method is intended primarily for debugging
      * and monitoring purposes.
      *
-     * @return  an estimate of the number of active threads in the current
-     *          thread's thread group and in any other thread group that
-     *          has the current thread's thread group as an ancestor
+     * @return  an estimate of the number of live platform threads in the
+     *          current thread's thread group and in any other thread group
+     *          that has the current thread's thread group as an ancestor
      */
     public static int activeCount() {
         return currentThread().getThreadGroup().activeCount();
     }
 
     /**
-     * Copies into the specified array every active thread in the current
-     * thread's thread group and its subgroups. This method simply
-     * invokes the {@link java.lang.ThreadGroup#enumerate(Thread[])}
+     * Copies into the specified array every {@linkplain #isAlive() live}
+     * platform thread in the current thread's thread group and its subgroups.
+     * This method simply invokes the {@link java.lang.ThreadGroup#enumerate(Thread[])}
      * method of the current thread's thread group. Virtual threads are
-     * not considered active threads in a thread group so this method
-     * does not enumerate virtual threads.
+     * not enumerated by this method.
      *
      * <p> An application might use the {@linkplain #activeCount activeCount}
      * method to get an estimate of how big the array should be, however
      * <i>if the array is too short to hold all the threads, the extra threads
-     * are silently ignored.</i>  If it is critical to obtain every active
+     * are silently ignored.</i>  If it is critical to obtain every live
      * thread in the current thread's thread group and its subgroups, the
      * invoker should verify that the returned int value is strictly less
      * than the length of {@code tarray}.
@@ -2246,7 +2266,7 @@ public class Thread implements Runnable {
             millis += 1L;
         }
         join(millis);
-        return threadState() == State.TERMINATED;
+        return isTerminated();
     }
 
     /**
@@ -2399,8 +2419,13 @@ public class Thread implements Runnable {
 
     /**
      * Sets the context {@code ClassLoader} for this thread.
-     * The context {@code ClassLoader} may be set by the creator of the thread
+     *
+     * <p> The context {@code ClassLoader} may be set by the creator of the thread
      * for use by code running in this thread when loading classes and resources.
+     *
+     * <p> The context {@code ClassLoader} cannot be set when the thread is
+     * {@linkplain Thread.Builder#allowSetThreadLocals(boolean) not allowed} to have
+     * its own copy of thread local variables.
      *
      * <p> If a security manager is present, its {@link
      * SecurityManager#checkPermission(java.security.Permission) checkPermission}
@@ -2593,7 +2618,7 @@ public class Thread implements Runnable {
         // Get a snapshot of the list of all threads
         Thread[] threads = getThreads();
         StackTraceElement[][] traces = dumpThreads(threads);
-        Map<Thread, StackTraceElement[]> m = new HashMap<>(threads.length);
+        Map<Thread, StackTraceElement[]> m = HashMap.newHashMap(threads.length);
         for (int i = 0; i < threads.length; i++) {
             StackTraceElement[] stackTrace = traces[i];
             if (stackTrace != null) {
@@ -2814,12 +2839,18 @@ public class Thread implements Runnable {
 
     /**
      * Returns the state of this thread.
-     *
-     * @apiNote For VirtualThread use as getState may be overridden and run
-     * arbitrary code.
+     * This method can be used instead of getState as getState is not final and
+     * so can be overridden to run arbitrary code.
      */
     State threadState() {
         return jdk.internal.misc.VM.toThreadState(holder.threadStatus);
+    }
+
+    /**
+     * Returns true if the thread has terminated.
+     */
+    boolean isTerminated() {
+        return threadState() == State.TERMINATED;
     }
 
     /**
@@ -2928,7 +2959,7 @@ public class Thread implements Runnable {
      * @return the uncaught exception handler for this thread
      */
     public UncaughtExceptionHandler getUncaughtExceptionHandler() {
-        if (threadState() == State.TERMINATED) {
+        if (isTerminated()) {
             // uncaughtExceptionHandler may be set to null after thread terminates
             return null;
         } else {
@@ -2996,7 +3027,7 @@ public class Thread implements Runnable {
             };
             @SuppressWarnings("removal")
             ThreadGroup root = AccessController.doPrivileged(getThreadGroup);
-            VTHREAD_GROUP = new ThreadGroup(root, "VirtualThreads", NORM_PRIORITY, false);
+            VTHREAD_GROUP = new ThreadGroup(root, "VirtualThreads", MAX_PRIORITY, false);
 
             NO_PERMISSIONS_ACC = new AccessControlContext(new ProtectionDomain[] {
                 new ProtectionDomain(null, null)
@@ -3012,6 +3043,13 @@ public class Thread implements Runnable {
             ClassLoader loader = AccessController.doPrivileged(createClassLoader);
             NOT_SUPPORTED_CLASSLOADER = loader;
         }
+    }
+
+    /**
+     * Returns the special ThreadGroup for virtual threads.
+     */
+    static ThreadGroup virtualThreadGroup() {
+        return Constants.VTHREAD_GROUP;
     }
 
     // The following three initially uninitialized fields are exclusively

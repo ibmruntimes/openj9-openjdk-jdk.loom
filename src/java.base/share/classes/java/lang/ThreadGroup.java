@@ -44,7 +44,7 @@ import jdk.internal.misc.VM;
  * when creating the group and cannot be changed. The group's maximum priority
  * is the maximum priority for threads created in the group. It is initially
  * inherited from the parent thread group but may be changed using the {@link
- * #setMaxPriority(int)} method.
+ * #setMaxPriority(int) setMaxPriority} method.
  *
  * <p> A thread group is weakly <a href="ref/package-summary.html#reachability">
  * <em>reachable</em></a> from its parent group so that it is eligible for garbage
@@ -53,6 +53,18 @@ import jdk.internal.misc.VM;
  *
  * <p> Unless otherwise specified, passing a {@code null} argument to a constructor
  * or method in this class will cause a {@link NullPointerException} to be thrown.
+ *
+ * <h2><a id="virtualthreadgroup">Thread groups and virtual threads</a></h2>
+ * The Java runtime creates a special thread group for
+ * <a href="Thread.html#virtual-threads">virtual threads</a>. This group is
+ * returned by the {@link Thread#getThreadGroup() Thread.getThreadGroup} method
+ * when invoked on a virtual thread. The thread group differs to other thread
+ * groups in that its maximum priority is fixed and cannot be changed with the
+ * {@link #setMaxPriority(int) setMaxPriority} method.
+ * Virtual threads are not included in the estimated thread count returned by the
+ * {@link #activeCount() activeCount} method, are not enumerated by the {@link
+ * #enumerate(Thread[]) enumerate} method, and are not interrupted by the {@link
+ * #interrupt() interrupt} method.
  *
  * @apiNote
  * Thread groups provided a way in early Java releases to group threads and provide
@@ -256,8 +268,11 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Sets the maximum priority of the group. Threads in the thread
-     * group that already have a higher priority are not affected.
+     * Sets the maximum priority of the group. The maximum priority of the
+     * <a href="ThreadGroup.html#virtualthreadgroup"><em>ThreadGroup for virtual
+     * threads</em></a> is not changed by this method (the new priority is ignored).
+     * Threads in the thread group (or subgroups) that already have a higher
+     * priority are not affected by this method.
      * <p>
      * First, the {@code checkAccess} method of this thread group is
      * called with no arguments; this may result in a security exception.
@@ -288,7 +303,7 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
             synchronized (this) {
                 if (parent == null) {
                     maxPriority = pri;
-                } else {
+                } else if (this != Thread.virtualThreadGroup()) {
                     maxPriority = Math.min(pri, parent.maxPriority);
                 }
                 subgroups().forEach(g -> g.setMaxPriority(pri));
@@ -342,10 +357,10 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Returns an estimate of the number of active (meaning
-     * {@linkplain Thread#isAlive() alive}) threads in this thread group
-     * and its subgroups. Recursively iterates over all subgroups in this
-     * thread group.
+     * Returns an estimate of the number of {@linkplain Thread#isAlive() live}
+     * platform threads in this thread group and its subgroups. Virtual threads
+     * are not included in the estimate. This method recursively iterates over
+     * all subgroups in this thread group.
      *
      * <p> The value returned is only an estimate because the number of
      * threads may change dynamically while this method traverses internal
@@ -353,7 +368,7 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
      * system threads. This method is intended primarily for debugging
      * and monitoring purposes.
      *
-     * @return  an estimate of the number of active threads in this thread
+     * @return  an estimate of the number of live threads in this thread
      *          group and in any other thread group that has this thread
      *          group as an ancestor
      */
@@ -370,8 +385,9 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Copies into the specified array every active (meaning {@linkplain
-     * Thread#isAlive() alive}) thread in this thread group and its subgroups.
+     * Copies into the specified array every {@linkplain Thread#isAlive() live}
+     * platform thread in this thread group and its subgroups. Virtual threads
+     * are not enumerated by this method.
      *
      * <p> An invocation of this method behaves in exactly the same
      * way as the invocation
@@ -394,17 +410,17 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Copies into the specified array every active (meaning {@linkplain
-     * Thread#isAlive() alive}) thread in this thread group. If {@code
-     * recurse} is {@code true}, this method recursively enumerates all
-     * subgroups of this thread group and references to every active thread
-     * in these subgroups are also included. If the array is too short to
-     * hold all the threads, the extra threads are silently ignored.
+     * Copies into the specified array every {@linkplain Thread#isAlive() live}
+     * platform thread in this thread group. Virtual threads are not enumerated
+     * by this method. If {@code recurse} is {@code true}, this method recursively
+     * enumerates all subgroups of this thread group and references to every live
+     * platform thread in these subgroups are also included. If the array is too
+     * short to hold all the threads, the extra threads are silently ignored.
      *
      * <p> An application might use the {@linkplain #activeCount activeCount}
      * method to get an estimate of how big the array should be, however
      * <i>if the array is too short to hold all the threads, the extra threads
-     * are silently ignored.</i>  If it is critical to obtain every active
+     * are silently ignored.</i>  If it is critical to obtain every live
      * thread in this thread group, the caller should verify that the returned
      * int value is strictly less than the length of {@code list}.
      *
@@ -552,7 +568,7 @@ public class ThreadGroup implements Thread.UncaughtExceptionHandler {
     }
 
     /**
-     * Interrupts all active (meaning {@linkplain Thread#isAlive() alive}) in
+     * Interrupts all {@linkplain Thread#isAlive() live} platform threads in
      * this thread group and its subgroups.
      *
      * @throws     SecurityException  if the current thread is not allowed

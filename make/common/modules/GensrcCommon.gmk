@@ -1,12 +1,24 @@
 #
+<<<<<<< HEAD
+<<<<<<< HEAD:make/common/modules/GensrcCommon.gmk
 # Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+=======
+# Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> master:make/data/autoheaders/assemblyprefix.h
+=======
+# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> master
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
+<<<<<<< HEAD
+# published by the Free Software Foundation.
+=======
 # published by the Free Software Foundation.  Oracle designates this
 # particular file as subject to the "Classpath" exception as provided
 # by Oracle in the LICENSE file that accompanied this code.
+>>>>>>> master
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,6 +35,10 @@
 # questions.
 #
 
+<<<<<<< HEAD
+<<<<<<< HEAD:make/common/modules/GensrcCommon.gmk
+=======
+>>>>>>> master
 include Execute.gmk
 include TextFileProcessing.gmk
 include ToolsJdk.gmk
@@ -41,3 +57,14 @@ define SetupVersionProperties
 
   $$(strip $1) += $(SUPPORT_OUTPUTDIR)/gensrc/$(MODULE)/$$(strip $2)
 endef
+<<<<<<< HEAD
+=======
+// ASSEMBLY_SRC_FILE gets replaced by relative or absolute file path
+// in NativeCompilation.gmk for gcc tooling on Linux. This ensures a
+// reproducible object file through a predictable value of the STT_FILE
+// symbol, and subsequently a reproducible .debuginfo.
+.file ASSEMBLY_SRC_FILE
+
+>>>>>>> master:make/data/autoheaders/assemblyprefix.h
+=======
+>>>>>>> master

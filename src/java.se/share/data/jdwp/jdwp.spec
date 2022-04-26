@@ -2021,10 +2021,10 @@ JDWP "Java(tm) Debug Wire Protocol"
         (Reply "none"
         )
         (ErrorSet
-            (Error INVALID_THREAD "The thread is null, not a valid thread, the thread "
-                                  "is not alive, or the thread is a virtual thread "
-                                  "and the target VM does not support stopping it "
-                                  "with an asynchronous exception at this time.")
+            (Error INVALID_THREAD "The thread is null, not a valid thread, or the thread "
+                                  "is not alive.")
+            (Error NOT_IMPLEMENTED "The thread is a virtual thread and the target "
+                                  "VM does not support the command on virtual threads.")
             (Error INVALID_OBJECT "If thread is not a known ID or the asynchronous "
                                   "exception has been garbage collected.")
             (Error VM_DEAD)
@@ -2147,14 +2147,12 @@ JDWP "Java(tm) Debug Wire Protocol"
                                      "the thread is not alive.")
             (Error INVALID_OBJECT    "Thread or value is not a known ID.")
             (Error THREAD_NOT_SUSPENDED)
-            (Error OPAQUE_FRAME      "Attempted to return early from "
-                                     "a frame corresponding to a native "
-                                     "method. "
-                                     "The thread is a virtual thread and the target "
-                                     "VM is unable force its current frame to return. "
-                                     "Or the implementation is "
-                                     "unable to provide this functionality "
-                                     "on this frame.")
+            (Error OPAQUE_FRAME      "Attempted to return early from a frame "
+                                     "corresponding to a native method, "
+                                     "the thread is a virtual thread and the target "
+                                     "VM is unable to force its current frame to return, "
+                                     "or the implementation is unable to provide this "
+                                     "functionality on this frame.")
             (Error NO_MORE_FRAMES)
             (Error NOT_IMPLEMENTED)
             (Error TYPE_MISMATCH   "Value is not an appropriate type for the "
@@ -2183,6 +2181,7 @@ JDWP "Java(tm) Debug Wire Protocol"
     )
 )
 (CommandSet ThreadGroupReference=12
+    "See <a href=../../api/java.base/java/lang/ThreadGroup.html>java.lang.ThreadGroup</a>."
     (Command Name=1
         "Returns the thread group name. "
         (Out
@@ -2214,13 +2213,10 @@ JDWP "Java(tm) Debug Wire Protocol"
         )
     )
     (Command Children=3
-        "Returns the live threads and active thread groups directly contained "
-        "in this thread group. Virtual threads are not considered live threads "
-        "in a thread group and are not included. Threads and thread groups in child "
-        "thread groups are not included. "
-        "A thread is alive if it has been started and has not yet been stopped. "
-        "See <a href=../../api/java.base/java/lang/ThreadGroup.html>java.lang.ThreadGroup</a> "
-        "for information about active ThreadGroups.
+        "Returns the live platform threads and the thread groups directly "
+        "contained in this thread group. Virtual threads are not included. "
+        "Threads and thread groups in child thread groups are not included. "
+        "A thread is alive if it has been started and has not yet terminated."
         (Out
             (threadGroupObject group "The thread group object ID. ")
         )
