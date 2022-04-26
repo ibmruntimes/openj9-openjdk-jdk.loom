@@ -666,7 +666,7 @@ class AnnotationInvocationHandler implements InvocationHandler, Serializable {
                 if (!(memberType.isInstance(value) ||
                       value instanceof ExceptionProxy)) {
                     value = new AnnotationTypeMismatchExceptionProxy(
-                                objectToString(value))
+                                Objects.toIdentityString(value))
                         .setMember(annotationType.members().get(name));
                 }
             }
