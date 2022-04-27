@@ -2614,17 +2614,13 @@ public class Thread implements Runnable {
             security.checkPermission(SecurityConstants.GET_STACK_TRACE_PERMISSION);
             security.checkPermission(SecurityConstants.MODIFY_THREADGROUP_PERMISSION);
         }
-
-        // Get a snapshot of the list of all threads
-        Thread[] threads = getThreads();
-        StackTraceElement[][] traces = dumpThreads(threads);
-        Map<Thread, StackTraceElement[]> m = HashMap.newHashMap(threads.length);
-        for (int i = 0; i < threads.length; i++) {
-            StackTraceElement[] stackTrace = traces[i];
-            if (stackTrace != null) {
-                m.put(threads[i], stackTrace);
-            }
-            // else terminated so we don't put it in the map
+        // Allow room for more Threads to be created before calling enumerate()
+        int count = systemThreadGroup.activeCount() + 20;
+        Thread[] threads = new Thread[count];
+        count = systemThreadGroup.enumerate(threads);
+        Map<Thread, StackTraceElement[]> result = HashMap.newHashMap(count);
+        for (int i = 0; i < count; i++) {
+            result.put(threads[i], threads[i].getStackTrace());
         }
         return m;
     }
