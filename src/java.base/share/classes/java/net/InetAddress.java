@@ -55,6 +55,9 @@ import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaNetInetAddressAccess;
+import jdk.internal.access.SharedSecrets;
+import jdk.internal.misc.Blocker;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.Stable;
 import sun.net.ResolverProviderConfiguration;
@@ -969,6 +972,7 @@ public sealed class InetAddress implements Serializable permits Inet4Address, In
     // in cache when the result is obtained
     private static final class NameServiceAddresses implements Addresses {
         private final String host;
+        private final ReentrantLock lookupLock = new ReentrantLock();
 
         NameServiceAddresses(String host) {
             this.host = host;

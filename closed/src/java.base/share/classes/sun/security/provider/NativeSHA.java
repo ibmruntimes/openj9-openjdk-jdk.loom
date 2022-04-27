@@ -1,9 +1,5 @@
 /*
-<<<<<<< HEAD:closed/src/java.base/share/classes/sun/security/provider/NativeSHA.java
  * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
-=======
- * Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
->>>>>>> master:test/jdk/javax/net/ssl/SSLException/CheckSSLKeyException.java
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-<<<<<<< HEAD:closed/src/java.base/share/classes/sun/security/provider/NativeSHA.java
 /*
  * ===========================================================================
  * (c) Copyright IBM Corp. 2018, 2019 All Rights Reserved
@@ -42,33 +37,5 @@ public final class NativeSHA extends NativeDigest {
      */
     public NativeSHA() {
         super("SHA-1", 20, 0);
-=======
-
-/*
- * @test
- * @bug 8282723
- * @summary Add constructors taking a cause to JSSE exceptions
- */
-import javax.net.ssl.SSLKeyException;
-import java.util.Objects;
-
-public class CheckSSLKeyException {
-    private static String exceptionMessage = "message";
-    private static Throwable exceptionCause = new RuntimeException();
-
-    public static void main(String[] args) throws Exception {
-        testException(
-                new SSLKeyException(exceptionMessage, exceptionCause));
-    }
-
-    private static void testException(Exception ex) {
-        if (!Objects.equals(ex.getMessage(), exceptionMessage)) {
-            throw new RuntimeException("Unexpected exception message");
-        }
-
-        if (ex.getCause() != exceptionCause) {
-            throw new RuntimeException("Unexpected exception cause");
-        }
->>>>>>> master:test/jdk/javax/net/ssl/SSLException/CheckSSLKeyException.java
     }
 }
