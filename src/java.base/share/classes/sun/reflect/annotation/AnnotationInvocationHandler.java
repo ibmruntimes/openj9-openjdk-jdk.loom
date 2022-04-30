@@ -677,15 +677,6 @@ class AnnotationInvocationHandler implements InvocationHandler, Serializable {
         UnsafeAccessor.setMemberValues(this, mv);
     }
 
-    /*
-     * Create a textual representation of the argument without calling
-     * any overridable methods of the argument.
-     */
-    private static String objectToString(Object value) {
-        return value.getClass().getName() + "@" +
-            Integer.toHexString(System.identityHashCode(value));
-    }
-
     private static class UnsafeAccessor {
         private static final jdk.internal.misc.Unsafe unsafe
                 = jdk.internal.misc.Unsafe.getUnsafe();
