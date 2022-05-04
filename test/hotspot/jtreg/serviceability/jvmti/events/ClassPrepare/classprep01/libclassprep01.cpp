@@ -43,14 +43,6 @@ typedef struct {
   jint mcount;
   jint fcount;
   jint icount;
-} writable_class_info;
-
-typedef struct {
-  const char *sig;
-  jint status;
-  jint mcount;
-  jint fcount;
-  jint icount;
 } class_info;
 
 static jvmtiEnv *jvmti = NULL;
@@ -62,13 +54,13 @@ static size_t eventsExpected = 0;
 static class_info *classes;
 
 static class_info kernel_classes[] = {
-    { "Lclassprep01$TestInterface;", EXP_STATUS, 2, 1, 0 },
-    { "Lclassprep01$TestClass;", EXP_STATUS, 3, 2, 1 }
+    { (char *)"Lclassprep01$TestInterface;", EXP_STATUS, 2, 1, 0 },
+    { (char *)"Lclassprep01$TestClass;", EXP_STATUS, 3, 2, 1 }
 };
 
 static class_info virtual_classes[] = {
-    { "Lclassprep01$TestInterfaceVirtual;", EXP_STATUS, 2, 1, 0 },
-    { "Lclassprep01$TestClassVirtual;", EXP_STATUS, 3, 2, 1 }
+    { (char *)"Lclassprep01$TestInterfaceVirtual;", EXP_STATUS, 2, 1, 0 },
+    { (char *)"Lclassprep01$TestClassVirtual;", EXP_STATUS, 3, 2, 1 }
 };
 
 void printStatus(jint status) {
@@ -97,7 +89,7 @@ void printStatus(jint status) {
 
 void JNICALL ClassPrepare(jvmtiEnv *jvmti, JNIEnv *jni, jthread thr, jclass cls) {
   jvmtiError err;
-  writable_class_info inf;
+  class_info inf;
   jmethodID *methods;
   jfieldID *fields;
   jclass *interfaces;
@@ -155,7 +147,7 @@ void JNICALL ClassPrepare(jvmtiEnv *jvmti, JNIEnv *jni, jthread thr, jclass cls)
       if (err == JVMTI_ERROR_NONE) {
         LOG(" \"%s%s\"", name, sig);
       } else {
-        LOG(" ???");
+        LOG(" <ERRROR in GetMethodName: %s (%d)> ", TranslateError(err), err);
       }
     }
   }
@@ -170,7 +162,7 @@ void JNICALL ClassPrepare(jvmtiEnv *jvmti, JNIEnv *jni, jthread thr, jclass cls)
       if (err == JVMTI_ERROR_NONE) {
         LOG(" \"%s, %s\"", name, sig);
       } else {
-        LOG(" ???");
+        LOG(" <ERRROR in GetFieldName: %s (%d)> ", TranslateError(err), err);
       }
     }
   }
@@ -185,7 +177,7 @@ void JNICALL ClassPrepare(jvmtiEnv *jvmti, JNIEnv *jni, jthread thr, jclass cls)
       if (err == JVMTI_ERROR_NONE) {
         LOG(" \"%s\"", sig);
       } else {
-        LOG(" ???");
+        LOG(" <ERRROR in GetClassSignature: %s (%d)> ", TranslateError(err), err);
       }
     }
   }
