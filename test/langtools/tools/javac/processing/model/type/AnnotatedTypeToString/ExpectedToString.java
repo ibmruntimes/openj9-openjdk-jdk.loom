@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Google LLC. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,24 +21,12 @@
  * questions.
  */
 
+package p;
 
-/*
- * @test
- *
- * @summary converted from VM Testbase nsk/jvmti/GetAllThreads/allthr001.
- * VM Testbase keywords: [quick, jpda, jvmti, noras]
- * VM Testbase readme:
- * DESCRIPTION
- *     The test exercises JVMTI function GetAllThreads.
- *     The test cases include:
- *     - user-defined java and debug threads
- *     - running and dead threads
- * COMMENTS
- *     Fixed according to the 4480280 bug.
- *     Ported from JVMDI.
- *
- * @library /vmTestbase
- *          /test/lib
- * @run main/othervm/native -agentlib:allthr001=printdump nsk.jvmti.GetAllThreads.allthr001 5
- */
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ExpectedToString {
+    String value();
+}
