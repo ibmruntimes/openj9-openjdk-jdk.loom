@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package sun.nio.ch;
 
-package jdk.jfr.events;
-import jdk.jfr.internal.handlers.EventHandler;
-import jdk.jfr.internal.Utils;
+import java.io.IOException;
 
-public final class Handlers {
-    public static final EventHandler SOCKET_READ = Utils.getHandler(SocketReadEvent.class);
-    public static final EventHandler SOCKET_WRITE = Utils.getHandler(SocketWriteEvent.class);
-    public static final EventHandler FILE_READ = Utils.getHandler(FileReadEvent.class);
-    public static final EventHandler FILE_WRITE = Utils.getHandler(FileWriteEvent.class);
-    public static final EventHandler FILE_FORCE = Utils.getHandler(FileForceEvent.class);
-    public static final EventHandler ERROR_THROWN = Utils.getHandler(ErrorThrownEvent.class);
-    public static final EventHandler EXCEPTION_THROWN = Utils.getHandler(ExceptionThrownEvent.class);
+/**
+ * Poller implementation based on the AIX Pollset library.
+ */
+
+class PollsetPoller extends Poller {
+
+    PollsetPoller(boolean read) throws IOException {
+        super(read);
+    }
+
+    @Override
+    int fdVal() {
+        // Stub
+        throw new UnsupportedOperationException("Unimplemented on AIX");
+    }
+
+    @Override
+    void implRegister(int fdVal) throws IOException {
+        // Stub
+        throw new UnsupportedOperationException("Unimplemented on AIX");
+    }
+
+    @Override
+    void implDeregister(int fdVal) {
+        // Stub
+        throw new UnsupportedOperationException("Unimplemented on AIX");
+    }
+
+    @Override
+    int poll(int timeout) throws IOException {
+        // Stub
+        throw new UnsupportedOperationException("Unimplemented on AIX");
+    }
 }
+
