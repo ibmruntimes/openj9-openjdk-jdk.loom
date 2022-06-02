@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.internal.vm;
 
-/**
- * Defines a static method to test if the VM has continuations support.
+import jdk.internal.math.MathUtilsChecker;
+
+/*
+ * @test
+ *
+ * @modules java.base/jdk.internal.math
+ * @library java.base
+ * @build java.base/jdk.internal.math.*
+ * @run main MathUtilsTest
  */
-public class ContinuationSupport {
-    private static final boolean SUPPORTED = isSupported0();
+public class MathUtilsTest {
 
-    private ContinuationSupport() {
+    public static void main(String[] args) {
+        MathUtilsChecker.test();
     }
 
-    /**
-     * Return true if the VM has continuations support.
-     */
-    public static boolean isSupported() {
-        return SUPPORTED;
-    }
-
-    /**
-     * Ensures that VM has continuations support.
-     * @throws UnsupportedOperationException if not supported
-     */
-    public static void ensureSupported() {
-        if (!isSupported()) {
-            throw new UnsupportedOperationException("VM does not support continuations");
-        }
-    }
-
-    private static native boolean isSupported0();
 }
