@@ -1303,6 +1303,8 @@ public class TreeInfo {
     public static boolean isErrorEnumSwitch(JCExpression selector, List<JCCase> cases) {
         return selector.type.tsym.kind == Kinds.Kind.ERR &&
                cases.stream().flatMap(c -> c.labels.stream())
+                             .filter(l -> l.hasTag(CONSTANTCASELABEL))
+                             .map(l -> ((JCConstantCaseLabel) l).expr)
                              .allMatch(p -> p.hasTag(IDENT));
     }
 
@@ -1328,7 +1330,30 @@ public class TreeInfo {
         return tree.patternSwitch ||
                tree.cases.stream()
                          .flatMap(c -> c.labels.stream())
-                         .anyMatch(l -> TreeInfo.isNull(l));
+                         .anyMatch(l -> TreeInfo.isNullCaseLabel(l));
+    }
+
+    public static boolean unguardedCaseLabel(JCCaseLabel cse) {
+        if (!cse.hasTag(PATTERNCASELABEL)) {
+            return true;
+        }
+        JCExpression guard = ((JCPatternCaseLabel) cse).guard;
+        if (guard == null) {
+            return true;
+        }
+        return isBooleanWithValue(guard, 1);
+    }
+
+    public static boolean isBooleanWithValue(JCExpression guard, int value) {
+        var constValue = guard.type.constValue();
+        return constValue != null &&
+                guard.type.hasTag(BOOLEAN) &&
+                ((int) constValue) == value;
+    }
+
+    public static boolean isNullCaseLabel(JCCaseLabel label) {
+        return label.hasTag(CONSTANTCASELABEL) &&
+               TreeInfo.isNull(((JCConstantCaseLabel) label).expr);
     }
 
     public static boolean unguardedCaseLabel(JCCaseLabel cse) {

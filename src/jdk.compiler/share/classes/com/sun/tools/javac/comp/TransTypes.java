@@ -569,6 +569,19 @@ public class TransTypes extends TreeTranslator {
         result = tree;
     }
 
+    @Override
+    public void visitConstantCaseLabel(JCConstantCaseLabel tree) {
+        tree.expr = translate(tree.expr, null);
+        result = tree;
+    }
+
+    @Override
+    public void visitPatternCaseLabel(JCPatternCaseLabel tree) {
+        tree.pat = translate(tree.pat, null);
+        tree.guard = translate(tree.guard, syms.booleanType);
+        result = tree;
+    }
+
     public void visitSwitchExpression(JCSwitchExpression tree) {
         Type selsuper = types.supertype(tree.selector.type);
         boolean enumSwitch = selsuper != null &&

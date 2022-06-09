@@ -487,11 +487,7 @@ Java_GetSetLocalTest_testSuspendedVirtualThreads(JNIEnv *jni, jclass klass, jthr
 
 JNIEXPORT jboolean JNICALL
 Java_GetSetLocalTest_completed(JNIEnv *jni, jclass klass) {
-  if (completed) {
-    completed = JNI_FALSE;
-    return JNI_TRUE;
-  }
-  return JNI_FALSE;
+  return completed;
 }
 
 } // extern "C"

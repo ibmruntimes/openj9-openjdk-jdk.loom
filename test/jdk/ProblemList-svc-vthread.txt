@@ -42,3 +42,5 @@ com/sun/jdi/sde/MangleTest.java 8285423 generic-all
 com/sun/jdi/sde/MangleStepTest.java 8285423 generic-all
 com/sun/jdi/sde/TemperatureTableTest.java 8285423 generic-all
 com/sun/jdi/sde/SourceDebugExtensionTest.java 8285423 generic-all
+
+com/sun/jdi/EATests.java#id0 8264699 generic-all

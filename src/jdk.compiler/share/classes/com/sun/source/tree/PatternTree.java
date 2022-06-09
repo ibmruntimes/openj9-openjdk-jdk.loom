@@ -33,15 +33,5 @@ import jdk.internal.javac.PreviewFeature;
  *
  * @since 16
  */
-public interface PatternTree extends Tree, CaseLabelTree {
-
-    /**
-     * The guard for the case.
-     *
-     * @return the guard
-     * @since 19
-     */
-    @PreviewFeature(feature=PreviewFeature.Feature.SWITCH_PATTERN_MATCHING, reflective=true)
-    ExpressionTree getGuard();
-
+public interface PatternTree extends Tree {
 }

@@ -1,5 +1,13 @@
 /*
+<<<<<<< HEAD
+<<<<<<< HEAD:src/java.base/share/classes/jdk/internal/event/ThreadSleepEvent.java
  * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+=======
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445:src/jdk.compiler/share/classes/com/sun/source/tree/PatternCaseLabelTree.java
+=======
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +34,10 @@
 package jdk.internal.event;
 
 /**
+<<<<<<< HEAD
+<<<<<<< HEAD:src/java.base/share/classes/jdk/internal/event/ThreadSleepEvent.java
+=======
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445
  * Event recording thread sleeping.
  */
 
@@ -38,6 +50,30 @@ public final class ThreadSleepEvent extends Event {
     public static boolean isTurnedOn() {
         return EVENT.isEnabled();
     }
+<<<<<<< HEAD
+=======
+ * A case label element that refers to an expression
+ * @since 19
+ */
+@PreviewFeature(feature=PreviewFeature.Feature.SWITCH_PATTERN_MATCHING, reflective=true)
+public interface PatternCaseLabelTree extends CaseLabelTree {
+
+    /**
+     * The pattern for the case.
+     *
+     * @return the pattern
+     */
+    public PatternTree getPattern();
+
+    /**
+     * The guard for the case.
+     *
+     * @return the guard
+     */
+    ExpressionTree getGuard();
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445:src/jdk.compiler/share/classes/com/sun/source/tree/PatternCaseLabelTree.java
+=======
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445
 
     public long time;
 }
