@@ -47,6 +47,7 @@ import java.util.regex.Pattern;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.ref.CleanerFactory;
+import jdk.internal.misc.Blocker;
 import sun.security.action.GetPropertyAction;
 
 /* This class is for the exclusive use of ProcessBuilder.start() to

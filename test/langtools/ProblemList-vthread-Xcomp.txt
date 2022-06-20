@@ -21,6 +21,7 @@
 # questions.
 #
 
+<<<<<<< HEAD:test/langtools/ProblemList-vthread-Xcomp.txt
 #############################################################################
 #
 # List of quarantined tests for testing in Xcomp mode with wrapper.
@@ -32,3 +33,6 @@
 
 tools/javac/failover/CheckAttributedTree.java
 tools/sjavac/IdleShutdown.java
+=======
+exclusiveAccess.dirs=.
+>>>>>>> 4cb748300c8b7a457ab13ba48b21bd34115f6445:test/jdk/java/lang/Thread/virtual/stress/TEST.properties

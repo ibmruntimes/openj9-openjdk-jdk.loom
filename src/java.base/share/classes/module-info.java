@@ -163,10 +163,10 @@ module java.base {
         java.naming,
         java.rmi,
         jdk.charsets,
+	jdk.incubator.concurrent,
         jdk.jartool,
         jdk.jlink,
-        jdk.net,
-        jdk.incubator.concurrent;
+        jdk.net;
     exports jdk.internal.foreign to
         jdk.incubator.vector;
     exports jdk.internal.event to
@@ -243,7 +243,7 @@ module java.base {
         jdk.unsupported;
     exports jdk.internal.vm to
         java.management,
-        jdk.incubator.concurrent,
+	jdk.incubator.concurrent,
         jdk.internal.jvmstat,
         jdk.management,
         jdk.management.agent;
@@ -306,7 +306,7 @@ module java.base {
         java.desktop,
         java.security.jgss,
         jdk.crypto.ec,
-        jdk.incubator.concurrent;
+	jdk.incubator.concurrent;
     exports sun.security.internal.interfaces to
         jdk.crypto.cryptoki;
     exports sun.security.internal.spec to

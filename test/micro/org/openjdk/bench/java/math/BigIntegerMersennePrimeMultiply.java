@@ -239,7 +239,6 @@ public class BigIntegerMersennePrimeMultiply implements ForkJoinPool.ForkJoinWor
     private static void resetTimes(Map<Thread, AtomicLong> timeMap, LongUnaryOperator timeMethod) {
         timeMap.forEach((thread, time) ->
                 time.set(timeMethod.applyAsLong(thread.threadId())));
-                time.set(timeMethod.applyAsLong(thread.getId())));
     }
 
     private static final Map<Thread, AtomicLong> userTime =
