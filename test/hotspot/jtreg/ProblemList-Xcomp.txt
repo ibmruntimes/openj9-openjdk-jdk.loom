@@ -40,6 +40,10 @@ serviceability/sa/TestJhsdbJstackMixed.java 8248675 linux-aarch64
 serviceability/jvmti/vthread/ContFramePopTest/ContFramePopTest.java 8278053 generic-all
 serviceability/jvmti/vthread/ContStackDepthTest/ContStackDepthTest.java 8278053 generic-all
 
+serviceability/jvmti/VMObjectAlloc/VMObjectAllocTest.java 8288430 generic-all
+
+serviceability/jvmti/vthread/ContStackDepthTest/ContStackDepthTest.java 8288949 generic-all
+
 ############################################################################
 
 # Loom, fibers branch

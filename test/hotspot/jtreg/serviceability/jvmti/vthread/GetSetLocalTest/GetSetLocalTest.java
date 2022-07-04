@@ -101,6 +101,10 @@ public class GetSetLocalTest {
         }
 
         GetSetLocalTest obj = new GetSetLocalTest();
-        obj.runTest();
+
+        for (int i = 0; i < 200; i++) {
+            obj.runTest();
+        }
+
     }
 }
